@@ -15,7 +15,7 @@ omarchy plugin add https://github.com/yogeshsuryag/dim.git
 "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/oma.dim/install"
 ```
 
-The installer adds the `dim` command and both widgets, rescans Omarchy, and enables all three plugins. If a different `dim` command is already installed, pass `--replace` to back it up before installing this one.
+The installer adds the `dim` command and both widgets, rescans Omarchy, and enables all three plugins.
 
 ## Use
 
