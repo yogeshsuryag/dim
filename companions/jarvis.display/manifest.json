@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "jarvis.display",
+  "name": "Jarvis Display",
+  "version": "1.0.0",
+  "author": "Jarvis",
+  "description": "Brightness and monitor controls with optional screen dim settings",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.monitor"
+  },
+  "barWidget": {
+    "displayName": "Display",
+    "description": "Brightness, screen dimming, and laptop display controls",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

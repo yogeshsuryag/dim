@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+PLUGIN_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins"
+REPLACE=false
+STAGED=()
+
+usage() {
+  echo "Usage: ./install-companions [--replace]"
+  echo "Install the five companion plugins without enabling or configuring them."
+}
+
+case "${1:-}" in
+  "") ;;
+  --replace) REPLACE=true ;;
+  -h|--help) usage; exit 0 ;;
+  *) usage >&2; exit 64 ;;
+esac
+
+for command in omarchy jq diff; do
+  command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 127; }
+done
+
+cleanup() {
+  local stage
+  for stage in "${STAGED[@]}"; do
+    [[ ! -e "$stage" ]] || rm -rf -- "$stage"
+  done
+}
+trap cleanup EXIT
+
+ids=(jarvis.bar jarvis.clock jarvis.display jarvis.indicators jarvis.workspaces)
+mkdir -p -- "$PLUGIN_ROOT"
+
+# Validate every source and detect conflicts before changing the plugin directory.
+for id in "${ids[@]}"; do
+  source_dir="$SCRIPT_DIR/companions/$id"
+  [[ -d "$source_dir" ]] || { echo "Missing companion source: $source_dir" >&2; exit 1; }
+  omarchy plugin validate "$source_dir"
+  source_id=$(jq -er '.id' "$source_dir/manifest.json")
+  [[ "$source_id" == "$id" ]] || { echo "Expected plugin id $id, found $source_id" >&2; exit 1; }
+  target="$PLUGIN_ROOT/$id"
+  [[ ! -L "$target" ]] || { echo "Refusing symlink target: $target" >&2; exit 1; }
+  if [[ -e "$target" ]] && ! diff -qr -- "$source_dir" "$target" >/dev/null; then
+    $REPLACE || { echo "Different plugin already exists at $target (pass --replace to back it up and replace it)." >&2; exit 1; }
+  fi
+done
+
+for id in "${ids[@]}"; do
+  source_dir="$SCRIPT_DIR/companions/$id"
+  target="$PLUGIN_ROOT/$id"
+  if [[ -d "$target" ]] && diff -qr -- "$source_dir" "$target" >/dev/null; then
+    echo "Unchanged: $id"
+    continue
+  fi
+
+  stage=$(mktemp -d "$PLUGIN_ROOT/.${id}.stage.XXXXXX")
+  STAGED+=("$stage")
+  cp -a -- "$source_dir/." "$stage/"
+  omarchy plugin validate "$stage"
+
+  if [[ -e "$target" ]]; then
+    backup="$PLUGIN_ROOT/${id}.backup.$(date +%Y%m%d%H%M%S).$$"
+    [[ ! -e "$backup" ]] || { echo "Backup already exists: $backup" >&2; exit 1; }
+    mv -- "$target" "$backup"
+    if ! mv -- "$stage" "$target"; then
+      mv -- "$backup" "$target"
+      exit 1
+    fi
+    echo "Replaced: $id (backup: $backup)"
+  else
+    mv -- "$stage" "$target"
+    echo "Installed: $id"
+  fi
+done
+
+echo "Companions installed. Rescan and enable only the plugins you want."
