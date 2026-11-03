@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "jarvis.dim",
+  "name": "Jarvis Dim",
+  "version": "1.0.0",
+  "author": "Jarvis",
+  "description": "Toggle a full-screen black overlay and configure its strength",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}
