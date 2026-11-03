@@ -7,12 +7,12 @@ export XDG_CONFIG_HOME="$test_root/config"
 plugins="$XDG_CONFIG_HOME/omarchy/plugins"
 
 "$repo/install-companions"
-for id in jarvis.bar jarvis.clock jarvis.display jarvis.indicators jarvis.workspaces; do
+for id in jarvis.display jarvis.indicators; do
   diff -qr -- "$repo/companions/$id" "$plugins/$id" >/dev/null
 done
 
 unchanged_output=$("$repo/install-companions")
-grep -q '^Unchanged: jarvis.bar$' <<<"$unchanged_output"
+grep -q '^Unchanged: jarvis.display$' <<<"$unchanged_output"
 printf 'local modification\n' > "$plugins/jarvis.display/local-only"
 if "$repo/install-companions" >"$test_root/conflict.out" 2>&1; then
   echo "expected conflicting companion to fail" >&2

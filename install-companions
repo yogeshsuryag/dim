@@ -8,7 +8,7 @@ STAGED=()
 
 usage() {
   echo "Usage: ./install-companions [--replace]"
-  echo "Install the five companion plugins without enabling or configuring them."
+  echo "Install the display and indicators companions without enabling or configuring them."
 }
 
 case "${1:-}" in
@@ -30,7 +30,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-ids=(jarvis.bar jarvis.clock jarvis.display jarvis.indicators jarvis.workspaces)
+ids=(jarvis.display jarvis.indicators)
 mkdir -p -- "$PLUGIN_ROOT"
 
 # Validate every source and detect conflicts before changing the plugin directory.
