@@ -2,13 +2,13 @@
 set -euo pipefail
 
 repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-test_root=$(mktemp -d "${TMPDIR:-/tmp}/jarvis-companions-test.XXXXXX")
+test_root=$(mktemp -d "${TMPDIR:-/tmp}/dim-companions-test.XXXXXX")
 export XDG_CONFIG_HOME="$test_root/config"
 export MOCK_LOG="$test_root/omarchy.log"
-mkdir -p "$test_root/bin" "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.dim"
+mkdir -p "$test_root/bin" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
 export PATH="$test_root/bin:$PATH"
 
-cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.dim/"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
 cat > "$XDG_CONFIG_HOME/omarchy/shell.json" <<'JSON'
 {
   "version": 1,
@@ -43,7 +43,7 @@ with open(sys.argv[1]) as file:
     config = json.load(file)
 ids = {item.get('id') for item in config.get('plugins', [])}
 ids |= {item.get('id') for entries in config.get('bar', {}).get('layout', {}).values() for item in entries}
-print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids} for plugin_id in ('jarvis.dim', 'jarvis.display', 'jarvis.indicators')]))
+print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids} for plugin_id in ('oma.dim', 'oma.display', 'oma.indicators')]))
 PY
 elif [[ ${1:-} == plugin && ${2:-} == enable ]]; then
   id=${3:?plugin id required}
@@ -90,18 +90,18 @@ MOCK
 chmod +x "$test_root/bin/omarchy" "$test_root/bin/omarchy-shell"
 
 # Validation errors must precede installs, config backups, and activation calls.
-if FAIL_VALIDATE_ID=jarvis.indicators "$repo/install-companions" >"$test_root/validation.out" 2>&1; then
+if FAIL_VALIDATE_ID=oma.indicators "$repo/install-companions" >"$test_root/validation.out" 2>&1; then
   echo "expected validation failure" >&2
   exit 1
 fi
 cmp "$test_root/original.json" "$XDG_CONFIG_HOME/omarchy/shell.json"
-[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.display" ]]
-[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.indicators" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" ]]
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/shell.json.backup."* ]]
 [[ ! -s "$MOCK_LOG" ]]
 
 "$repo/install-companions"
-for id in jarvis.dim jarvis.indicators jarvis.display; do
+for id in oma.dim oma.indicators oma.display; do
   grep -q "^enable $id$" "$MOCK_LOG"
 done
 backup=$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit)
@@ -109,12 +109,12 @@ backup=$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*'
 cmp "$test_root/original.json" "$backup"
 jq -e '.customSetting == "preserve me"
   and any(.plugins[]; .id == "existing.service" and .setting == "keep")
-  and any(.plugins[]; .id == "jarvis.dim")
+  and any(.plugins[]; .id == "oma.dim")
   and .bar.position == "top"
   and .bar.layout.left[0].id == "omarchy.menu"
-  and .bar.layout.right[0].id == "jarvis.display"
+  and .bar.layout.right[0].id == "oma.display"
   and .bar.layout.right[0].brightness == 73
-  and .bar.layout.right[1].id == "jarvis.indicators"
+  and .bar.layout.right[1].id == "oma.indicators"
   and .bar.layout.right[1].items == ["Dnd"]
   and .bar.layout.right[1].alwaysShow == true' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
 
@@ -128,7 +128,7 @@ cmp "$test_root/repeat-log" "$MOCK_LOG"
 [[ $(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' | wc -l) == "$backup_count" ]]
 
 # Conflicts abort before activation; explicit replacement preserves config and backs up the folder.
-printf 'local edit\n' > "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.display/local-only"
+printf 'local edit\n' > "$XDG_CONFIG_HOME/omarchy/plugins/oma.display/local-only"
 cp "$MOCK_LOG" "$test_root/conflict-log"
 cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/conflict-config.json"
 if "$repo/install-companions" >"$test_root/conflict.out" 2>&1; then
@@ -138,23 +138,23 @@ fi
 cmp "$test_root/conflict-log" "$MOCK_LOG"
 cmp "$test_root/conflict-config.json" "$XDG_CONFIG_HOME/omarchy/shell.json"
 "$repo/install-companions" --replace
-[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.display/local-only" ]]
-plugin_backup=$(find "$XDG_CONFIG_HOME/omarchy/plugin-backups" -maxdepth 1 -type d -name 'jarvis.display.backup.*' -print -quit)
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.display/local-only" ]]
+plugin_backup=$(find "$XDG_CONFIG_HOME/omarchy/plugin-backups" -maxdepth 1 -type d -name 'oma.display.backup.*' -print -quit)
 [[ -n "$plugin_backup" && -f "$plugin_backup/local-only" ]]
 [[ $(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' | wc -l) == "$backup_count" ]]
 
 # With stock clone slots absent, the mocked native API uses the manifest fallback section.
 fresh="$test_root/fresh"
 export XDG_CONFIG_HOME="$fresh"
-mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.dim"
-cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/jarvis.dim/"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
 printf '{"version":1,"plugins":[],"bar":{"layout":{"left":[{"id":"omarchy.menu"}]}}}\n' > "$XDG_CONFIG_HOME/omarchy/shell.json"
 cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/fresh-original.json"
 : > "$MOCK_LOG"
 "$repo/install-companions"
-jq -e 'any(.plugins[]; .id == "jarvis.dim")
+jq -e 'any(.plugins[]; .id == "oma.dim")
   and .bar.layout.left[0].id == "omarchy.menu"
-  and any(.bar.layout.center[]; .id == "jarvis.display")
-  and any(.bar.layout.center[]; .id == "jarvis.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
+  and any(.bar.layout.center[]; .id == "oma.display")
+  and any(.bar.layout.center[]; .id == "oma.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
 cmp "$test_root/fresh-original.json" "$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit)"
 echo "Companion install and enable checks passed (temporary files: $test_root)."

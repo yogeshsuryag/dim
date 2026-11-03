@@ -2,9 +2,9 @@
 
 ## Omarchy companion code
 
-Portions of `companions/jarvis.display/` and `companions/jarvis.indicators/` are adapted from Omarchy source. The upstream manifests identify these plugins as clones of `omarchy.monitor` and `omarchy.indicators`. Omarchy is licensed under the MIT License; the copyright and license notice below apply to those adapted portions.
+Portions of `companions/oma.display/` and `companions/oma.indicators/` are adapted from Omarchy source. The manifests identify these plugins as clones of `omarchy.monitor` and `omarchy.indicators`. Omarchy is licensed under the MIT License; the copyright and license notice below apply to those adapted portions.
 
-The root `jarvis.dim` plugin is separately licensed under the MIT License in [LICENSE](LICENSE), with copyright © 2026 Jarvis. That root license does not replace this notice or alter the attribution for Omarchy-derived companion portions.
+The root `oma.dim` plugin is separately licensed under the MIT License in [LICENSE](LICENSE). That root license does not replace this notice or alter the attribution for Omarchy-derived companion portions.
 
 Upstream license: [omacom/omarchy `LICENSE` on branch `quattro`](https://github.com/omacom/omarchy/blob/quattro/LICENSE).
 

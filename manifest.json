@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "jarvis.dim",
-  "name": "Jarvis Dim",
+  "id": "oma.dim",
+  "name": "Dim",
   "version": "1.0.0",
-  "author": "Jarvis",
+  "author": "Dim",
   "description": "Toggle a full-screen black overlay and configure its strength",
   "kinds": [
     "service"

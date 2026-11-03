@@ -69,7 +69,7 @@ Item {
     command: ["mkdir", "-p", root.stateDir]
     onExited: function(exitCode) {
       if (exitCode !== 0) {
-        console.warn("jarvis.dim: could not create state directory")
+        console.warn("oma.dim: could not create state directory")
         return
       }
       root.stateDirReady = true
@@ -98,7 +98,7 @@ Item {
   }
 
   IpcHandler {
-    target: "jarvis.dim"
+    target: "oma.dim"
 
     function status(): string {
       return JSON.stringify({ enabled: root.dimEnabled, strength: root.strength })
@@ -135,7 +135,7 @@ Item {
       visible: root.dimEnabled && root.strength > 0
       anchors { top: true; bottom: true; left: true; right: true }
       color: "transparent"
-      WlrLayershell.namespace: "jarvis-dim"
+      WlrLayershell.namespace: "oma-dim"
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
       exclusionMode: ExclusionMode.Ignore

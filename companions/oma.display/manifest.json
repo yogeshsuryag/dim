@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "jarvis.display",
-  "name": "Jarvis Display",
+  "id": "oma.display",
+  "name": "Display",
   "version": "1.0.0",
-  "author": "Jarvis",
+  "author": "Dim",
   "description": "Brightness and monitor controls with optional screen dim settings",
   "kinds": [
     "bar-widget"

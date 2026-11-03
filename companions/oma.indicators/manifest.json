@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "jarvis.indicators",
-  "name": "Jarvis Screen Dim Indicator",
+  "id": "oma.indicators",
+  "name": "Screen Dim Indicator",
   "version": "1.0.0",
   "author": "Omarchy",
   "description": "Manual state indicators",
@@ -12,7 +12,7 @@
     "barWidget": "Indicators.qml"
   },
   "barWidget": {
-    "displayName": "Jarvis Screen Dim",
+    "displayName": "Screen Dim",
     "description": "Manual state indicators",
     "category": "Status",
     "allowMultiple": true,

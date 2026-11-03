@@ -10,7 +10,7 @@ STAGED=()
 
 usage() {
   echo "Usage: ./install-companions [--replace]"
-  echo "Install and enable jarvis.dim, jarvis.display, and jarvis.indicators."
+  echo "Install and enable oma.dim, oma.display, and oma.indicators."
 }
 
 case "${1:-}" in
@@ -32,7 +32,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-ids=(jarvis.display jarvis.indicators)
+ids=(oma.display oma.indicators)
 mkdir -p -- "$PLUGIN_ROOT"
 
 # Validate all sources and reject conflicts before installing or enabling anything.
@@ -87,7 +87,7 @@ done
 
 omarchy-shell shell rescanPlugins >/dev/null
 installed_plugins=$(omarchy plugin list --json)
-for id in jarvis.dim "${ids[@]}"; do
+for id in oma.dim "${ids[@]}"; do
   jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$installed_plugins" >/dev/null || {
     echo "Plugin '$id' is not known after rescan; no activation changes were made." >&2
     exit 1
@@ -95,7 +95,7 @@ for id in jarvis.dim "${ids[@]}"; do
 done
 
 NEEDS_ENABLE=()
-for id in jarvis.dim jarvis.indicators jarvis.display; do
+for id in oma.dim oma.indicators oma.display; do
   if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null; then
     NEEDS_ENABLE+=("$id")
   fi
@@ -113,10 +113,10 @@ for id in "${NEEDS_ENABLE[@]}"; do
 done
 
 installed_plugins=$(omarchy plugin list --json)
-for id in jarvis.dim jarvis.indicators jarvis.display; do
+for id in oma.dim oma.indicators oma.display; do
   jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null || {
     echo "Omarchy did not enable '$id'." >&2
     exit 1
   }
 done
-echo "Jarvis Dim, Display, and Screen Dim indicator are enabled."
+echo "Dim, Display, and Screen Dim indicator are enabled."
