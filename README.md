@@ -3,7 +3,7 @@
 This repository contains exactly three related plugins: root plugin `jarvis.dim`, plus source-only companions `jarvis.display` and `jarvis.indicators`. Omarchy installs the root plugin from the repository manifest; run its installed helper to copy the two companion folders.
 
 ```sh
-omarchy plugin add <repository-url>
+omarchy plugin add https://github.com/yogeshsuryag/dim.git
 "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/jarvis.dim/install-companions"
 ```
 
