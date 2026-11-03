@@ -1,57 +1,49 @@
-# Jarvis Omarchy plugins
+# Jarvis Dim for Omarchy
 
-This repository contains exactly three related plugins: root plugin `jarvis.dim`, plus source-only companions `jarvis.display` and `jarvis.indicators`. Omarchy installs the root plugin from the repository manifest; run its installed helper to copy the two companion folders.
+Dim every display with a black overlay, toggle it from the bar, and adjust its strength from the display panel. This bundle includes the `jarvis.dim` service, the `jarvis.display` monitor widget, and the `jarvis.indicators` status widget.
+
+[▶ Watch demo](https://github.com/yogeshsuryag/dim/blob/main/docs/assets/dim-demo.mp4)
+
+## Install
+
+Install the root plugin, then run its companion helper. The helper installs both widgets, rescans Omarchy, enables the service, and enables the cloned widgets. Omarchy replaces each matching built-in in place, keeping its bar position and settings; if a matching built-in is absent, Omarchy uses the widget's normal default placement.
 
 ```sh
 omarchy plugin add https://github.com/yogeshsuryag/dim.git
 "${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/jarvis.dim/install-companions"
 ```
 
-The helper validates both companions and only installs files. It does not enable plugins or edit `shell.json`. Identical installed folders are skipped. A different folder with the same ID stops the run; rerun the same helper with `--replace` to first move that folder to a timestamped backup. After copying, rescan the shell and enable only the plugins you want:
+If you have already installed the companions and want to replace changed copies, run the helper with `--replace`. It backs up conflicting folders before replacing them.
+
+## Use
+
+- Click the Screen Dim indicator to toggle the overlay.
+- Open the Display widget to adjust dim strength, brightness, text size, scaling, and monitor state.
+- Call the service over Omarchy IPC:
 
 ```sh
-omarchy-shell shell rescanPlugins
-omarchy plugin enable jarvis.dim
-omarchy plugin enable jarvis.indicators
-omarchy plugin enable jarvis.display
+omarchy-shell jarvis.dim toggle
+omarchy-shell jarvis.dim status
+omarchy-shell jarvis.dim setStrength 60
 ```
 
-The `jarvis.indicators` ScreenDim indicator sends IPC to `jarvis.dim` and retains the existing `screendim` state directory. `jarvis.display` customizes Omarchy's built-in monitor plugin and expects its stock shell services.
+Strength is an integer from `0` to `100`; `0` hides the overlay. The overlay starts disabled after a shell restart, while strength is saved under `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/screendim/`.
 
-Omarchy stores enabled plugin IDs in `~/.config/omarchy/shell.json`. Add these objects to the existing configuration's `plugins` array to enable all three (preserve any existing IDs):
+## Remove
 
-```json
-{
-  "plugins": [
-    { "id": "jarvis.dim" },
-    { "id": "jarvis.indicators" },
-    { "id": "jarvis.display" }
-  ]
-}
-```
-
-The root plugin is a native Git checkout, so update it through Omarchy. Companion folders are copied without Git metadata; update them by rerunning the installed helper with `--replace`, which backs up any changed directory before replacing it. Enable, disable, update, and remove each plugin by its own ID:
+Remove the widgets before removing the service they call:
 
 ```sh
-omarchy plugin enable jarvis.dim
+omarchy plugin disable jarvis.indicators
+omarchy plugin disable jarvis.display
 omarchy plugin disable jarvis.dim
-omarchy plugin update jarvis.dim
+omarchy plugin remove jarvis.indicators
+omarchy plugin remove jarvis.display
 omarchy plugin remove jarvis.dim
 ```
 
-Use enable, disable, and remove with `jarvis.display` and `jarvis.indicators` as needed. Removing `jarvis.dim` before `jarvis.indicators` leaves an indicator whose IPC target is absent; disable/remove the indicator first, then the service. The helper does not remove installed companions.
+Removing `jarvis.dim` does not remove the two companion folders or the saved state directory. Remove those separately if desired.
 
-## Source and attribution
+## License and attribution
 
-The root `jarvis.dim` plugin is MIT licensed; see [LICENSE](LICENSE). Companion source was copied from the installed user plugin directories. The `jarvis.indicators` manifest credits Omarchy; `jarvis.display` credits Jarvis.
-
-## Validate
-
-```sh
-omarchy plugin validate .
-for id in jarvis.display jarvis.indicators; do
-  omarchy plugin validate "companions/$id"
-done
-bash -n install-companions tests/install-companions.sh
-./tests/install-companions.sh
-```
+The root `jarvis.dim` plugin is MIT licensed; see [LICENSE](LICENSE). Adapted Omarchy portions in the two companion plugins retain Omarchy's MIT copyright and license notice in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). See [TECHNICAL.md](TECHNICAL.md) for details.

@@ -3,12 +3,14 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 PLUGIN_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins"
+SHELL_CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/shell.json"
+PLUGIN_BACKUP_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugin-backups"
 REPLACE=false
 STAGED=()
 
 usage() {
   echo "Usage: ./install-companions [--replace]"
-  echo "Install the display and indicators companions without enabling or configuring them."
+  echo "Install and enable jarvis.dim, jarvis.display, and jarvis.indicators."
 }
 
 case "${1:-}" in
@@ -18,7 +20,7 @@ case "${1:-}" in
   *) usage >&2; exit 64 ;;
 esac
 
-for command in omarchy jq diff; do
+for command in omarchy omarchy-shell jq diff; do
   command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 127; }
 done
 
@@ -33,7 +35,8 @@ trap cleanup EXIT
 ids=(jarvis.display jarvis.indicators)
 mkdir -p -- "$PLUGIN_ROOT"
 
-# Validate every source and detect conflicts before changing the plugin directory.
+# Validate all sources and reject conflicts before installing or enabling anything.
+omarchy plugin validate "$SCRIPT_DIR"
 for id in "${ids[@]}"; do
   source_dir="$SCRIPT_DIR/companions/$id"
   [[ -d "$source_dir" ]] || { echo "Missing companion source: $source_dir" >&2; exit 1; }
@@ -47,32 +50,73 @@ for id in "${ids[@]}"; do
   fi
 done
 
+# Stage and validate every replacement before moving any installed plugin.
 for id in "${ids[@]}"; do
   source_dir="$SCRIPT_DIR/companions/$id"
   target="$PLUGIN_ROOT/$id"
   if [[ -d "$target" ]] && diff -qr -- "$source_dir" "$target" >/dev/null; then
-    echo "Unchanged: $id"
     continue
   fi
-
   stage=$(mktemp -d "$PLUGIN_ROOT/.${id}.stage.XXXXXX")
   STAGED+=("$stage")
   cp -a -- "$source_dir/." "$stage/"
   omarchy plugin validate "$stage"
+done
 
+for id in "${ids[@]}"; do
+  source_dir="$SCRIPT_DIR/companions/$id"
+  target="$PLUGIN_ROOT/$id"
+  [[ -d "$target" ]] && diff -qr -- "$source_dir" "$target" >/dev/null && continue
+  stage=${STAGED[0]}
+  STAGED=("${STAGED[@]:1}")
   if [[ -e "$target" ]]; then
-    backup="$PLUGIN_ROOT/${id}.backup.$(date +%Y%m%d%H%M%S).$$"
+    mkdir -p -- "$PLUGIN_BACKUP_ROOT"
+    backup="$PLUGIN_BACKUP_ROOT/${id}.backup.$(date +%Y%m%d%H%M%S).$$"
     [[ ! -e "$backup" ]] || { echo "Backup already exists: $backup" >&2; exit 1; }
     mv -- "$target" "$backup"
     if ! mv -- "$stage" "$target"; then
       mv -- "$backup" "$target"
       exit 1
     fi
-    echo "Replaced: $id (backup: $backup)"
+    echo "Replaced $id (backup: $backup)"
   else
     mv -- "$stage" "$target"
-    echo "Installed: $id"
+    echo "Installed $id"
   fi
 done
 
-echo "Companions installed. Rescan and enable only the plugins you want."
+omarchy-shell shell rescanPlugins >/dev/null
+installed_plugins=$(omarchy plugin list --json)
+for id in jarvis.dim "${ids[@]}"; do
+  jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$installed_plugins" >/dev/null || {
+    echo "Plugin '$id' is not known after rescan; no activation changes were made." >&2
+    exit 1
+  }
+done
+
+NEEDS_ENABLE=()
+for id in jarvis.dim jarvis.indicators jarvis.display; do
+  if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null; then
+    NEEDS_ENABLE+=("$id")
+  fi
+done
+
+if (( ${#NEEDS_ENABLE[@]} > 0 )) && [[ -f "$SHELL_CONFIG" ]]; then
+  backup="$SHELL_CONFIG.backup.$(date +%Y%m%d%H%M%S).$$"
+  [[ ! -e "$backup" ]] || { echo "Config backup already exists: $backup" >&2; exit 1; }
+  cp -a -- "$SHELL_CONFIG" "$backup"
+  echo "Saved current shell config to $backup"
+fi
+
+for id in "${NEEDS_ENABLE[@]}"; do
+  omarchy plugin enable "$id"
+done
+
+installed_plugins=$(omarchy plugin list --json)
+for id in jarvis.dim jarvis.indicators jarvis.display; do
+  jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null || {
+    echo "Omarchy did not enable '$id'." >&2
+    exit 1
+  }
+done
+echo "Jarvis Dim, Display, and Screen Dim indicator are enabled."
