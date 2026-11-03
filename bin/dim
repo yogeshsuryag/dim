@@ -7,13 +7,14 @@ usage() {
   cat <<'EOF'
 Dim screen tint
 
-Usage: dim [help|status|toggle|strength [0-100]|enable|disable]
+Usage: dim [help|status|toggle|strength [0-100]|enable|disable|remove]
 
   toggle          Toggle the screen dimming overlay
   status          Show plugin and dimming status
   strength [N]    Show or set strength (0-100)
   enable          Enable Dim and its display companions
   disable         Turn dimming off and disable all three plugins
+  remove          Disable and remove Dim, its companions, and this command
 EOF
 }
 
@@ -108,6 +109,55 @@ disable() {
   printf 'Dim is disabled. Your plugin files and strength setting are retained.\n'
 }
 
+remove() {
+  local current config backup root id dir bin_path source_path installed_cli remove_cli=false
+  command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'
+  command -v jq >/dev/null || fail 'jq is required'
+  root="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/oma.dim"
+  source_path=$(readlink -f -- "$root/bin/dim" 2>/dev/null || true)
+  bin_path=$(readlink -f -- "${BASH_SOURCE[0]}")
+  installed_cli=${DIM_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}/dim
+  if [[ -n $source_path && ! -L $installed_cli && -f $installed_cli && $installed_cli != "$source_path" ]] \
+    && cmp -s -- "$source_path" "$installed_cli" && [[ $bin_path == "$installed_cli" ]]; then
+    remove_cli=true
+  fi
+  current=$(omarchy plugin list --json) || fail 'could not read Omarchy plugins'
+
+  # Refuse unexpected paths before disabling anything or deleting files.
+  for id in "${plugins[@]}"; do
+    dir="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/$id"
+    [[ ! -L $dir ]] || fail "refusing symlink plugin directory: $dir"
+    if [[ -e $dir ]]; then
+      [[ -d $dir && -f $dir/manifest.json ]] || fail "unexpected plugin directory: $dir"
+      [[ $(jq -er '.id' "$dir/manifest.json") == "$id" ]] || fail "plugin id mismatch in $dir/manifest.json"
+    fi
+  done
+
+  config=${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/shell.json
+  if [[ -f $config ]]; then
+    backup="$config.backup.$(date +%Y%m%d%H%M%S).$$"
+    [[ ! -e $backup ]] || fail "config backup already exists: $backup"
+    cp -a -- "$config" "$backup"
+    printf 'Saved current shell config to %s\n' "$backup"
+  fi
+
+  disable
+  # The root checkout is git-managed by `plugin add`; use Omarchy's removal
+  # command for it. The two bundled companions are plain copied directories.
+  if jq -e 'any(.[]; .id == "oma.dim")' <<<"$current" >/dev/null; then
+    omarchy plugin remove oma.dim || fail "could not remove oma.dim; companion files were retained"
+  fi
+  for id in oma.display oma.indicators; do
+    dir="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/$id"
+    [[ ! -e $dir ]] || rm -rf -- "$dir"
+  done
+
+  # Delete only this installed CLI when it is byte-for-byte our own copy.
+  $remove_cli && rm -- "$installed_cli"
+  omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true
+  printf 'Dim and its companion plugins were removed. Strength settings were retained.\n'
+}
+
 case "${1:-help}" in
   help|-h|--help) [[ $# -le 1 ]] || fail 'help takes no arguments'; usage ;;
   status) [[ $# -eq 1 ]] || fail 'usage: dim status'; status ;;
@@ -125,5 +175,6 @@ case "${1:-help}" in
     fi ;;
   enable) [[ $# -eq 1 ]] || fail 'usage: dim enable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; enable ;;
   disable) [[ $# -eq 1 ]] || fail 'usage: dim disable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; disable ;;
+  remove) [[ $# -eq 1 ]] || fail 'usage: dim remove'; remove ;;
   *) usage >&2; fail "unknown command: $1" ;;
 esac

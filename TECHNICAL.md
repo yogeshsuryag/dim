@@ -14,7 +14,11 @@ Omarchy's marketplace and native `omarchy plugin add` flow expect a repository w
 
 The root `install-companions` helper handles the two additional IDs. It resolves the plugin directory using `XDG_CONFIG_HOME` (falling back to `$HOME/.config`), validates the root and both companion manifests, checks for conflicting destination folders, stages and validates copies, and then installs the two companion folders. It rescans Omarchy and calls `omarchy plugin enable` for all three IDs. For the two manifests that declare `omarchy.clonedFrom`, Omarchy's clone-aware enable path switches the matching built-in widget to the companion while preserving its existing bar position and settings. If the matching built-in has no configured slot, Omarchy uses the plugin's native default placement. The helper backs up the current `shell.json` before activation when changes are needed. With `--replace`, a different existing companion folder is moved to a timestamped backup before the replacement is installed.
 
-The helper does not edit `shell.json` directly. It uses Omarchy's plugin command, leaving the shell to persist enabled IDs and bar layout. The standard update command updates the root checkout; companions have no Git metadata and are refreshed by rerunning the installed helper with `--replace`.
+The helper does not edit `shell.json` directly. It uses Omarchy's plugin command, leaving the shell to persist enabled IDs and bar layout. The repository installer installs the CLI and runs this helper to install or refresh the companion directories and activate all three IDs.
+
+`dim remove` first turns the overlay off and disables each installed ID through Omarchy. It backs up `shell.json`, asks Omarchy to remove the root Git checkout, removes only the two validated companion directories under the configured plugin directory, and deletes the command from the configured user bin only when it is an identical regular-file copy of this CLI. It retains the `screendim` strength state and all backups. Missing plugin directories are allowed, so removal can finish after a partial install.
+
+Omarchy's official `plugin add` command installs plugin files but does not run plugin hooks or export executable commands. The repository installer handles the separate CLI installation and companion setup.
 
 ## Upgrading from the previous IDs
 

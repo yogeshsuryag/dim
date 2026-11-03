@@ -5,6 +5,7 @@ repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/dim-cli-test.XXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT
 export DIM_TEST_ROOT=$tmp MOCK_LOG=$tmp/log
+export XDG_STATE_HOME=$tmp/state-home
 mkdir -p "$tmp/bin"
 export PATH="$tmp/bin:$PATH"
 
@@ -35,6 +36,13 @@ for plugin in plugins:
 json.dump(plugins, open(p, 'w'))
 PY
     ;;
+  'plugin remove oma.dim') printf 'remove oma.dim\n' >> "$MOCK_LOG"; rm -rf -- "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"; python3 - "$DIM_TEST_ROOT/plugins.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as file: plugins = json.load(file)
+with open(path, 'w') as file: json.dump([item for item in plugins if item['id'] != 'oma.dim'], file)
+PY
+    ;;
   *) echo "unexpected omarchy: $*" >&2; exit 64 ;;
 esac
 MOCK
@@ -47,6 +55,7 @@ case "$*" in
   'oma.dim toggle') echo disabled ;;
   'oma.dim disable') [[ ${FAIL_DIM_IPC:-} != true ]] || exit 1; echo disabled ;;
   'oma.dim setStrength '*) echo "${3:?}" ;;
+  'shell rescanPlugins') ;;
   *) echo "unexpected shell IPC: $*" >&2; exit 64 ;;
 esac
 MOCK
@@ -87,4 +96,53 @@ cp "$MOCK_LOG" "$tmp/disabled-log"
 cmp "$tmp/disabled-log" "$MOCK_LOG"
 "$repo/bin/dim" status | grep -q 'Dim: disabled'
 "$repo/bin/dim" --help | grep -q 'Usage: dim'
+
+# Removal uses isolated config, plugin, state, and command locations.
+export XDG_CONFIG_HOME="$DIM_TEST_ROOT/config"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" "$DIM_TEST_ROOT/installed-bin"
+for id in oma.dim oma.display oma.indicators; do
+  printf '{"id":"%s"}\n' "$id" > "$XDG_CONFIG_HOME/omarchy/plugins/$id/manifest.json"
+done
+
+# Removal backs up shell config, disables all three ids, removes the root via
+# Omarchy's command, removes only the two companion folders, and keeps state.
+cp "$repo/bin/dim" "$DIM_TEST_ROOT/installed-bin/dim"
+export DIM_BIN_DIR="$DIM_TEST_ROOT/installed-bin"
+printf '{"plugins":[]}' > "$XDG_CONFIG_HOME/omarchy/shell.json"
+cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin-dim-source"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin"
+cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin/dim"
+mkdir -p "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim"
+printf '{"strength":42}\n' > "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json"
+python3 - "$DIM_TEST_ROOT/plugins.json" <<'PY'
+import json, sys
+plugins = json.load(open(sys.argv[1]))
+for plugin in plugins: plugin['enabled'] = True
+json.dump(plugins, open(sys.argv[1], 'w'))
+PY
+# A plugin folder symlink must stop removal before changing Omarchy or its target.
+mkdir -p "$DIM_TEST_ROOT/outside"
+printf 'keep\n' > "$DIM_TEST_ROOT/outside/keep"
+mv "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" "$DIM_TEST_ROOT/display-dir"
+ln -s "$DIM_TEST_ROOT/outside" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
+if "$repo/bin/dim" remove >"$tmp/remove-symlink.out" 2>&1; then
+  echo 'symlink plugin directory unexpectedly removed' >&2
+  exit 1
+fi
+grep -q 'refusing symlink plugin directory' "$tmp/remove-symlink.out"
+[[ -f "$DIM_TEST_ROOT/outside/keep" ]]
+[[ $(python3 -c 'import json,sys; print(str(all(x["enabled"] for x in json.load(open(sys.argv[1])))).lower())' "$DIM_TEST_ROOT/plugins.json") == true ]]
+unlink "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
+mv "$DIM_TEST_ROOT/display-dir" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
+"$DIM_TEST_ROOT/installed-bin/dim" remove >/dev/null
+[[ ! -e "$DIM_TEST_ROOT/installed-bin/dim" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" ]]
+[[ -n $(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit) ]]
+[[ -f "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json" ]]
+# Re-running against absent plugin folders is safe and leaves the repo source intact.
+"$repo/bin/dim" remove >/dev/null
+[[ -f "$repo/bin/dim" ]]
+[[ -f "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json" ]]
 echo 'Dim CLI checks passed.'
