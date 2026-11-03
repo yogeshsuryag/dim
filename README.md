@@ -2,9 +2,9 @@
 
 Dim every display with a black overlay. Toggle it from the bar and adjust its strength from the display panel. This bundle includes the `oma.dim` service, the `oma.display` monitor widget, and the `oma.indicators` status widget.
 
-[![Watch the 15-second demo](docs/assets/dim-demo-poster.png)](https://raw.githubusercontent.com/yogeshsuryag/dim/refs/heads/main/docs/assets/dim-demo.mp4)
+[![Play the 15-second demo](docs/assets/dim-demo-poster.png)](https://yogeshsuryag.github.io/dim/)
 
-GitHub does not play video files stored in a repository inline in a README. Click the preview to download the MP4, then open it in a video player.
+Click the preview to open the video player.
 
 ## Install
 
