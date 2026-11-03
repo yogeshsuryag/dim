@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+bin_dir=${DIM_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}
+target=$bin_dir/dim
+replace=false
+
+case "${1:-}" in
+  "") ;;
+  --replace) replace=true ;;
+  -h|--help) echo 'Usage: ./install [--replace]'; exit 0 ;;
+  *) echo 'Usage: ./install [--replace]' >&2; exit 64 ;;
+esac
+
+for command in omarchy omarchy-shell jq diff; do
+  command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 127; }
+done
+
+# Validate every plugin before changing the user's command path or shell config.
+omarchy plugin validate "$repo"
+for id in oma.display oma.indicators; do
+  dir=$repo/companions/$id
+  [[ -d $dir ]] || { echo "Missing companion source: $dir" >&2; exit 1; }
+  omarchy plugin validate "$dir"
+  [[ $(jq -er '.id' "$dir/manifest.json") == "$id" ]] || { echo "Unexpected plugin id in $dir/manifest.json" >&2; exit 1; }
+done
+
+mkdir -p -- "$bin_dir"
+if [[ -e $target || -L $target ]]; then
+  [[ ! -L $target ]] || { echo "Refusing symlink command target: $target" >&2; exit 1; }
+  if cmp -s -- "$repo/bin/dim" "$target"; then
+    : # An identical install is already in place.
+  elif [[ $replace == true ]]; then
+    backup=$target.backup.$(date +%Y%m%d%H%M%S).$$
+    [[ ! -e $backup ]] || { echo "Backup already exists: $backup" >&2; exit 1; }
+    cp -a -- "$target" "$backup"
+    install -m 755 -- "$repo/bin/dim" "$target"
+    echo "Replaced existing dim command (backup: $backup)"
+  else
+    echo "Different command already exists at $target (pass --replace to back it up and replace it)." >&2
+    exit 1
+  fi
+else
+  install -m 755 -- "$repo/bin/dim" "$target"
+  echo "Installed command: $target"
+fi
+
+"$repo/install-companions"
+echo 'Dim is ready. Run: dim toggle'

@@ -3,7 +3,11 @@
 Dim every display with a black overlay, toggle it from the bar, and adjust its strength from the display panel. This bundle includes the `oma.dim` service, the `oma.display` monitor widget, and the `oma.indicators` status widget.
 
 
-https://github.com/user-attachments/assets/535337ed-982e-4a4e-a2a6-457716df9509
+![](https://github.com/user-attachments/assets/535337ed-982e-4a4e-a2a6-457716df9509)
+
+If the player does not load, [open the demo video](docs/assets/dim-demo.mp4) or click this preview:
+
+[![Dim demo preview](docs/assets/dim-demo-poster.jpg)](docs/assets/dim-demo.mp4)
 
 
 
@@ -20,28 +24,28 @@ omarchy plugin disable jarvis.screendim && omarchy plugin remove jarvis.screendi
 
 Run only the commands for IDs present on your system. Removing the old service does not remove the saved `screendim` strength setting.
 
-Install the root plugin, then run its companion helper. The helper installs both widgets, rescans Omarchy, enables the service, and enables the cloned widgets. Omarchy replaces each matching built-in in place, keeping its bar position and settings; if a matching built-in is absent, Omarchy uses the widget's normal default placement.
+Install the root plugin, then run its installer. It installs the `dim` command and both widgets, rescans Omarchy, and enables all three plugins. Omarchy replaces each matching built-in in place, keeping its bar position and settings; if a matching built-in is absent, Omarchy uses the widget's normal default placement.
 
 ```sh
 omarchy plugin add https://github.com/yogeshsuryag/dim.git
-"${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/oma.dim/install-companions"
+"${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/oma.dim/install"
 ```
 
-If you have already installed the companions and want to replace changed copies, run the helper with `--replace`. It backs up conflicting folders before replacing them.
+If a different `dim` command is already installed, pass `--replace` to back it up before installing this one.
 
 ## Use
 
-- Click the Screen Dim indicator to toggle the overlay.
-- Open the Display widget to adjust dim strength, brightness, text size, scaling, and monitor state.
-- Call the service over Omarchy IPC:
+- Use the `dim` command to toggle dimming, check status, change strength, or enable and disable Dim:
 
 ```sh
-omarchy-shell oma.dim toggle
-omarchy-shell oma.dim status
-omarchy-shell oma.dim setStrength 60
+dim toggle
+dim status
+dim strength 60
+dim enable
+dim disable
 ```
 
-Strength is an integer from `0` to `100`; `0` hides the overlay. The overlay starts disabled after a shell restart, while strength is saved under `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/screendim/`.
+Run `dim` or `dim help` to see the command list. `dim status` shows whether Dim is enabled or dimming and reports its strength. `dim strength` shows the current strength; `dim strength 60` sets it from `0` to `100` while preserving the current on/off state, with `0` hiding the overlay. If `dim toggle` or `dim strength` reports `Dim is disabled. Run: dim enable`, run `dim enable` to enable all three plugins. `dim disable` turns the overlay off and disables the plugins while keeping their files and saved strength. The `dim` command is installed in `~/.local/bin`.
 
 ## Remove
 

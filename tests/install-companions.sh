@@ -157,4 +157,30 @@ jq -e 'any(.plugins[]; .id == "oma.dim")
   and any(.bar.layout.center[]; .id == "oma.display")
   and any(.bar.layout.center[]; .id == "oma.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
 cmp "$test_root/fresh-original.json" "$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit)"
+
+# The public installer places the CLI first, then installs and enables plugins.
+installer_config="$test_root/installer-config"
+installer_bin="$test_root/installer-bin"
+export XDG_CONFIG_HOME="$installer_config" DIM_BIN_DIR="$installer_bin"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
+printf '{"version":1,"plugins":[],"bar":{"layout":{"left":[],"center":[],"right":[]}}}\n' > "$XDG_CONFIG_HOME/omarchy/shell.json"
+mkdir -p "$installer_bin"
+printf '#!/bin/sh\necho user command\n' > "$installer_bin/dim"
+cp "$installer_bin/dim" "$test_root/installer-original-command"
+cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/installer-original.json"
+if "$repo/install" >"$test_root/installer-conflict.out" 2>&1; then
+  echo 'expected CLI install conflict' >&2
+  exit 1
+fi
+cmp "$test_root/installer-original.json" "$XDG_CONFIG_HOME/omarchy/shell.json"
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" ]]
+: > "$MOCK_LOG"
+"$repo/install" --replace
+[[ -x "$installer_bin/dim" ]]
+cmp "$repo/bin/dim" "$installer_bin/dim"
+cmp "$test_root/installer-original-command" "$(find "$installer_bin" -maxdepth 1 -name 'dim.backup.*' -print -quit)"
+grep -q '^enable oma.dim$' "$MOCK_LOG"
+grep -q '^enable oma.display$' "$MOCK_LOG"
+grep -q '^enable oma.indicators$' "$MOCK_LOG"
 echo "Companion install and enable checks passed (temporary files: $test_root)."

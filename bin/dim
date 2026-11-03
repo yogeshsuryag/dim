@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+plugins=(oma.dim oma.display oma.indicators)
+
+usage() {
+  cat <<'EOF'
+Dim screen tint
+
+Usage: dim [help|status|toggle|strength [0-100]|enable|disable]
+
+  toggle          Toggle the screen dimming overlay
+  status          Show plugin and dimming status
+  strength [N]    Show or set strength (0-100)
+  enable          Enable Dim and its display companions
+  disable         Turn dimming off and disable all three plugins
+EOF
+}
+
+fail() { printf 'dim: %s\n' "$*" >&2; exit 1; }
+
+require_shell() {
+  command -v omarchy-shell >/dev/null || fail 'omarchy-shell is required (install Omarchy shell first)'
+}
+
+enabled_plugins() {
+  command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'
+  command -v jq >/dev/null || fail 'jq is required'
+  omarchy plugin list --json | jq -er '[.[] | select(.enabled == true) | .id]'
+}
+
+all_enabled() {
+  local enabled=$1 id
+  for id in "${plugins[@]}"; do
+    jq -e --arg id "$id" 'index($id) != null' <<<"$enabled" >/dev/null || return 1
+  done
+}
+
+disabled_guard() {
+  local enabled
+  enabled=$(enabled_plugins) || fail 'could not read Omarchy plugin status'
+  all_enabled "$enabled" || fail 'Dim is disabled. Run: dim enable'
+}
+
+status() {
+  local plugin_data enabled payload active strength state id strength_file
+  command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'
+  command -v jq >/dev/null || fail 'jq is required'
+  plugin_data=$(omarchy plugin list --json) || fail 'could not read Omarchy plugin status'
+  enabled=$(jq -er '[.[] | select(.enabled == true) | .id]' <<<"$plugin_data") || fail 'invalid Omarchy plugin status'
+  active=true
+  for id in "${plugins[@]}"; do
+    if ! jq -e --arg id "$id" 'index($id) != null' <<<"$enabled" >/dev/null; then active=false; fi
+  done
+  if jq -e 'any(.[]; .id == "oma.dim" and .enabled == true)' <<<"$plugin_data" >/dev/null; then
+    require_shell
+    payload=$(omarchy-shell oma.dim status) || fail 'could not read Dim status; is omarchy-shell running?'
+    strength=$(jq -er '.strength | numbers' <<<"$payload") || fail 'invalid status from Dim service'
+    if [[ $active != true ]]; then state='disabled (plugin integration incomplete)'
+    elif jq -e '.enabled == true' <<<"$payload" >/dev/null; then
+      if (( strength > 0 )); then state='dimming'; else state='enabled (strength is 0%)'; fi
+    else state='enabled, dimming off'
+    fi
+  else
+    strength_file=${XDG_STATE_HOME:-${HOME}/.local/state}/omarchy/screendim/strength.json
+    strength=35
+    if [[ -f $strength_file ]]; then
+      strength=$(jq -er '.strength | numbers' "$strength_file" 2>/dev/null) || fail "invalid Dim strength setting: $strength_file"
+    fi
+    state='disabled'
+  fi
+  printf 'Dim: %s\nStrength: %s%%\n' "$state" "$strength"
+}
+
+enable() {
+  local current id
+  current=$(omarchy plugin list --json) || fail 'could not read Omarchy plugins'
+  for id in "${plugins[@]}"; do
+    jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$current" >/dev/null || fail "plugin '$id' is missing; install Dim with: omarchy plugin add https://github.com/yogeshsuryag/dim.git"
+  done
+  for id in "${plugins[@]}"; do
+    if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$current" >/dev/null; then
+      omarchy plugin enable "$id" || fail "could not enable '$id'"
+    fi
+  done
+  current=$(omarchy plugin list --json) || fail 'could not verify Omarchy plugins'
+  all_enabled "$(jq -c '[.[] | select(.enabled == true) | .id]' <<<"$current")" || fail 'Omarchy did not enable all Dim plugins'
+  printf 'Dim, Display, and Screen Dim indicator are enabled.\n'
+}
+
+disable() {
+  local current id errors=0
+  current=$(omarchy plugin list --json) || fail 'could not read Omarchy plugins'
+  if jq -e 'any(.[]; .id == "oma.dim" and .enabled == true)' <<<"$current" >/dev/null; then
+    if command -v omarchy-shell >/dev/null && omarchy-shell oma.dim disable >/dev/null; then
+      :
+    else
+      echo 'dim: could not turn dimming off through the running shell; disabling plugins anyway' >&2
+      errors=1
+    fi
+  fi
+  for id in "${plugins[@]}"; do
+    if jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$current" >/dev/null; then
+      omarchy plugin disable "$id" || { echo "dim: could not disable '$id'" >&2; errors=1; }
+    fi
+  done
+  (( errors == 0 )) || fail 'disable completed with errors'
+  printf 'Dim is disabled. Your plugin files and strength setting are retained.\n'
+}
+
+case "${1:-help}" in
+  help|-h|--help) [[ $# -le 1 ]] || fail 'help takes no arguments'; usage ;;
+  status) [[ $# -eq 1 ]] || fail 'usage: dim status'; status ;;
+  toggle) [[ $# -eq 1 ]] || fail 'usage: dim toggle'; disabled_guard; require_shell; omarchy-shell oma.dim toggle ;;
+  strength)
+    [[ $# -le 2 ]] || fail 'usage: dim strength [0-100]'
+    disabled_guard; require_shell
+    if [[ $# -eq 1 ]]; then
+      payload=$(omarchy-shell oma.dim status) || fail 'could not read Dim status; is omarchy-shell running?'
+      strength_value=$(jq -er '.strength | numbers' <<<"$payload") || fail 'invalid status from Dim service'
+      printf 'Strength: %s%%\n' "$strength_value"
+    else
+      [[ $2 =~ ^[0-9]{1,3}$ ]] && (( 10#$2 <= 100 )) || fail 'strength must be an integer from 0 to 100'
+      omarchy-shell oma.dim setStrength "$((10#$2))" || fail 'could not set strength; is omarchy-shell running?'
+    fi ;;
+  enable) [[ $# -eq 1 ]] || fail 'usage: dim enable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; enable ;;
+  disable) [[ $# -eq 1 ]] || fail 'usage: dim disable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; disable ;;
+  *) usage >&2; fail "unknown command: $1" ;;
+esac
