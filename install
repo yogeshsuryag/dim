@@ -12,10 +12,17 @@ case "${1:-}" in
   -h|--help) echo 'Usage: ./install [--replace]'; exit 0 ;;
   *) echo 'Usage: ./install [--replace]' >&2; exit 64 ;;
 esac
+[[ $# -le 1 ]] || { echo 'Usage: ./install [--replace]' >&2; exit 64; }
 
 for command in omarchy omarchy-shell jq diff; do
   command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 127; }
 done
+
+root_plugin="$HOME/.config/omarchy/plugins/oma.dim"
+if [[ ! -f "$root_plugin/manifest.json" ]] || [[ $(jq -r '.id' "$root_plugin/manifest.json") != oma.dim ]]; then
+  echo 'First install the root plugin: omarchy plugin add https://github.com/yogeshsuryag/dim.git' >&2
+  exit 1
+fi
 
 # Validate every plugin before changing the user's command path or shell config.
 omarchy plugin validate "$repo"
@@ -46,5 +53,5 @@ else
   echo "Installed command: $target"
 fi
 
-"$repo/install-companions"
+"$repo/install-companions" "$@"
 echo 'Dim is ready. Run: dim toggle'

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "oma.dim",
   "name": "Dim",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Dim",
   "description": "Toggle a full-screen black overlay and configure its strength",
   "kinds": [
@@ -10,5 +10,6 @@
   ],
   "entryPoints": {
     "service": "Service.qml"
-  }
+  },
+  "license": "MIT"
 }

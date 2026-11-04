@@ -8,14 +8,16 @@ Click the preview to open the video player.
 
 ## Install
 
-Add the plugin, then run its installer:
+Run **both commands**. Omarchy's first command adds only `oma.dim`; the second installs the CLI and both companion widgets, then enables the complete set:
 
 ```sh
 omarchy plugin add https://github.com/yogeshsuryag/dim.git
-"${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/oma.dim/install"
+"$HOME/.config/omarchy/plugins/oma.dim/install"
 ```
 
-The installer adds the `dim` command and both widgets, rescans Omarchy, and enables all three plugins.
+Wait for `Installed and enabled: oma.dim, oma.display, oma.indicators.` before using Dim. The installer backs up your shell configuration, replaces the stock display control in its existing position, and adds a separate Dim indicator without removing the other indicators. Earlier Dim IDs are disabled automatically; their files and saved strength are retained.
+
+Requires Omarchy Quattro with a running shell. The installer uses its existing `omarchy`, `omarchy-shell`, Bash, Git, `jq`, coreutils, and diffutils commands. No sudo is required. Installation changes only your user plugin directories, bar configuration, and `~/.local/bin/dim`.
 
 ## Use
 

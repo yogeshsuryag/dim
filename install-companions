@@ -2,9 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-PLUGIN_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins"
-SHELL_CONFIG="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/shell.json"
-PLUGIN_BACKUP_ROOT="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugin-backups"
+# Match Omarchy's PluginRegistry and native plugin commands (not XDG_CONFIG_HOME).
+PLUGIN_ROOT="$HOME/.config/omarchy/plugins"
+SHELL_CONFIG="$HOME/.config/omarchy/shell.json"
+PLUGIN_BACKUP_ROOT="$HOME/.config/omarchy/plugin-backups"
 REPLACE=false
 STAGED=()
 
@@ -19,6 +20,7 @@ case "${1:-}" in
   -h|--help) usage; exit 0 ;;
   *) usage >&2; exit 64 ;;
 esac
+[[ $# -le 1 ]] || { usage >&2; exit 64; }
 
 for command in omarchy omarchy-shell jq diff; do
   command -v "$command" >/dev/null || { echo "Missing required command: $command" >&2; exit 127; }
@@ -86,28 +88,46 @@ for id in "${ids[@]}"; do
 done
 
 omarchy-shell shell rescanPlugins >/dev/null
-installed_plugins=$(omarchy plugin list --json)
-for id in oma.dim "${ids[@]}"; do
-  jq -e --arg id "$id" 'any(.[]; .id == $id)' <<<"$installed_plugins" >/dev/null || {
-    echo "Plugin '$id' is not known after rescan; no activation changes were made." >&2
-    exit 1
-  }
+# rescanPlugins returns before the registry's subprocess has read the new files.
+# Retry the rescan too: an earlier in-flight scan can ignore the first request.
+discovered=false
+discovery_deadline=$((SECONDS + 5))
+for ((attempt = 0; SECONDS < discovery_deadline; attempt++)); do
+  installed_plugins=$(omarchy plugin list --json)
+  if jq -e 'map(.id) as $found | ["oma.dim", "oma.display", "oma.indicators"]
+    | all(. as $id | $found | index($id) != null)' <<<"$installed_plugins" >/dev/null; then
+    discovered=true
+    break
+  fi
+  sleep 0.05
+  if (( attempt % 10 == 9 )); then omarchy-shell shell rescanPlugins >/dev/null; fi
 done
+$discovered || {
+  echo "Dim files were installed in $PLUGIN_ROOT, but Omarchy did not discover all three plugins within 5 seconds. No activation changes were made. Check the shell logs and rerun this installer." >&2
+  exit 1
+}
 
 NEEDS_ENABLE=()
+LEGACY_ENABLED=()
+mapfile -t LEGACY_ENABLED < <(jq -r '.[] | select(.enabled == true)
+  | select(.id == "jarvis.dim" or .id == "jarvis.screendim"
+    or .id == "jarvis.display" or .id == "jarvis.indicators") | .id' <<<"$installed_plugins")
 for id in oma.dim oma.indicators oma.display; do
   if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null; then
     NEEDS_ENABLE+=("$id")
   fi
 done
 
-if (( ${#NEEDS_ENABLE[@]} > 0 )) && [[ -f "$SHELL_CONFIG" ]]; then
+if (( ${#NEEDS_ENABLE[@]} > 0 || ${#LEGACY_ENABLED[@]} > 0 )) && [[ -f "$SHELL_CONFIG" ]]; then
   backup="$SHELL_CONFIG.backup.$(date +%Y%m%d%H%M%S).$$"
   [[ ! -e "$backup" ]] || { echo "Config backup already exists: $backup" >&2; exit 1; }
   cp -a -- "$SHELL_CONFIG" "$backup"
   echo "Saved current shell config to $backup"
 fi
 
+for id in "${LEGACY_ENABLED[@]}"; do
+  omarchy plugin disable "$id"
+done
 for id in "${NEEDS_ENABLE[@]}"; do
   omarchy plugin enable "$id"
 done
@@ -119,4 +139,4 @@ for id in oma.dim oma.indicators oma.display; do
     exit 1
   }
 done
-echo "Dim, Display, and Screen Dim indicator are enabled."
+echo "Installed and enabled: oma.dim, oma.display, oma.indicators."

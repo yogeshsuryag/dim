@@ -6,7 +6,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "omarchy.indicators"
+  moduleName: "oma.indicators"
 
   readonly property var defaultIndicatorEntries: [ "ScreenDim" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
@@ -14,7 +14,7 @@ BarWidget {
   property var indicatorActiveStates: ({})
   property bool indicatorAreaHovered: false
   property bool indicatorItemHovered: false
-  readonly property bool alwaysShowIndicators: setting("alwaysShow", false) === true
+  readonly property bool alwaysShowIndicators: setting("alwaysShow", true) === true
   readonly property bool revealInactiveIndicators: alwaysShowIndicators || indicatorAreaHovered || indicatorItemHovered || (bar && bar.centerSectionRevealHeld === true && bar.centerHoverRevealSuppressed !== true)
 
   signal refreshRequested()
@@ -166,7 +166,7 @@ BarWidget {
     : Math.max(activeHorizontalBlock.implicitHeight, inactiveHorizontalArea.implicitHeight)
 
   IpcHandler {
-    target: "omarchy.indicators"
+    target: "oma.indicators"
 
     function refresh(): void {
       root.broadcast("refresh")

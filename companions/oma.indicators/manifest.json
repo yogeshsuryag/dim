@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "oma.indicators",
   "name": "Screen Dim Indicator",
-  "version": "1.0.0",
-  "author": "Omarchy",
-  "description": "Manual state indicators",
+  "version": "1.0.1",
+  "author": "Dim (adapted from Omarchy)",
+  "description": "A standalone bar control for the Dim overlay",
   "kinds": [
     "bar-widget"
   ],
@@ -38,11 +38,10 @@
         "type": "boolean",
         "label": "Always Show",
         "description": "Show inactive indicators without waiting for hover.",
-        "defaultValue": false
+        "defaultValue": true
       }
-    ]
+    ],
+    "defaultSection": "right"
   },
-  "omarchy": {
-    "clonedFrom": "omarchy.indicators"
-  }
+  "license": "MIT"
 }

@@ -6,6 +6,7 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/dim-cli-test.XXXXXX")
 trap 'rm -rf -- "$tmp"' EXIT
 export DIM_TEST_ROOT=$tmp MOCK_LOG=$tmp/log
 export XDG_STATE_HOME=$tmp/state-home
+export XDG_CONFIG_HOME=$tmp/config
 mkdir -p "$tmp/bin"
 export PATH="$tmp/bin:$PATH"
 
@@ -66,36 +67,36 @@ cat > "$tmp/plugins.json" <<'JSON'
 JSON
 printf '{"enabled":false,"strength":42}\n' > "$tmp/state.json"
 
-if "$repo/bin/dim" toggle >"$tmp/out" 2>&1; then echo 'disabled toggle unexpectedly succeeded' >&2; exit 1; fi
+if "$repo/tests/with-config.sh" "$repo/bin/dim" toggle >"$tmp/out" 2>&1; then echo 'disabled toggle unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'Dim is disabled. Run: dim enable' "$tmp/out"
-if "$repo/bin/dim" strength >"$tmp/out" 2>&1; then echo 'disabled strength unexpectedly succeeded' >&2; exit 1; fi
+if "$repo/tests/with-config.sh" "$repo/bin/dim" strength >"$tmp/out" 2>&1; then echo 'disabled strength unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'Dim is disabled. Run: dim enable' "$tmp/out"
 
-if FAIL_ENABLE_ID=oma.dim "$repo/bin/dim" enable >"$tmp/out" 2>&1; then echo 'native enable failure unexpectedly succeeded' >&2; exit 1; fi
+if FAIL_ENABLE_ID=oma.dim "$repo/tests/with-config.sh" "$repo/bin/dim" enable >"$tmp/out" 2>&1; then echo 'native enable failure unexpectedly succeeded' >&2; exit 1; fi
 grep -q "could not enable 'oma.dim'" "$tmp/out"
 : > "$MOCK_LOG"
 
-"$repo/bin/dim" enable >/dev/null
+"$repo/tests/with-config.sh" "$repo/bin/dim" enable >/dev/null
 [[ $(grep -c '^enable ' "$MOCK_LOG") == 1 ]]
 cp "$MOCK_LOG" "$tmp/enabled-log"
-"$repo/bin/dim" enable >/dev/null
+"$repo/tests/with-config.sh" "$repo/bin/dim" enable >/dev/null
 cmp "$tmp/enabled-log" "$MOCK_LOG"
-"$repo/bin/dim" strength | grep -q 'Strength: 42%'
-"$repo/bin/dim" strength 0 >/dev/null
+"$repo/tests/with-config.sh" "$repo/bin/dim" strength | grep -q 'Strength: 42%'
+"$repo/tests/with-config.sh" "$repo/bin/dim" strength 0 >/dev/null
 grep -q '^oma.dim setStrength 0$' "$MOCK_LOG"
-if "$repo/bin/dim" strength 101 >"$tmp/out" 2>&1; then echo 'invalid strength unexpectedly succeeded' >&2; exit 1; fi
+if "$repo/tests/with-config.sh" "$repo/bin/dim" strength 101 >"$tmp/out" 2>&1; then echo 'invalid strength unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'strength must be an integer from 0 to 100' "$tmp/out"
-"$repo/bin/dim" status | grep -q 'Dim: enabled, dimming off'
-"$repo/bin/dim" toggle >/dev/null
-if FAIL_DIM_IPC=true "$repo/bin/dim" disable >"$tmp/out" 2>&1; then echo 'IPC failure unexpectedly succeeded' >&2; exit 1; fi
+"$repo/tests/with-config.sh" "$repo/bin/dim" status | grep -q 'Dim: enabled, dimming off'
+"$repo/tests/with-config.sh" "$repo/bin/dim" toggle >/dev/null
+if FAIL_DIM_IPC=true "$repo/tests/with-config.sh" "$repo/bin/dim" disable >"$tmp/out" 2>&1; then echo 'IPC failure unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'disabling plugins anyway' "$tmp/out"
 [[ $(python3 -c 'import json,sys; print(str(all(not x["enabled"] for x in json.load(open(sys.argv[1])))).lower())' "$tmp/plugins.json") == true ]]
 [[ $(grep -c '^disable ' "$MOCK_LOG") == 3 ]]
 cp "$MOCK_LOG" "$tmp/disabled-log"
-"$repo/bin/dim" disable >/dev/null
+"$repo/tests/with-config.sh" "$repo/bin/dim" disable >/dev/null
 cmp "$tmp/disabled-log" "$MOCK_LOG"
-"$repo/bin/dim" status | grep -q 'Dim: disabled'
-"$repo/bin/dim" --help | grep -q 'Usage: dim'
+"$repo/tests/with-config.sh" "$repo/bin/dim" status | grep -q 'Dim: disabled'
+"$repo/tests/with-config.sh" "$repo/bin/dim" --help | grep -q 'Usage: dim'
 
 # Removal uses isolated config, plugin, state, and command locations.
 export XDG_CONFIG_HOME="$DIM_TEST_ROOT/config"
@@ -125,7 +126,7 @@ mkdir -p "$DIM_TEST_ROOT/outside"
 printf 'keep\n' > "$DIM_TEST_ROOT/outside/keep"
 mv "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" "$DIM_TEST_ROOT/display-dir"
 ln -s "$DIM_TEST_ROOT/outside" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
-if "$repo/bin/dim" remove >"$tmp/remove-symlink.out" 2>&1; then
+if "$repo/tests/with-config.sh" "$repo/bin/dim" remove >"$tmp/remove-symlink.out" 2>&1; then
   echo 'symlink plugin directory unexpectedly removed' >&2
   exit 1
 fi
@@ -134,7 +135,7 @@ grep -q 'refusing symlink plugin directory' "$tmp/remove-symlink.out"
 [[ $(python3 -c 'import json,sys; print(str(all(x["enabled"] for x in json.load(open(sys.argv[1])))).lower())' "$DIM_TEST_ROOT/plugins.json") == true ]]
 unlink "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
 mv "$DIM_TEST_ROOT/display-dir" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
-"$DIM_TEST_ROOT/installed-bin/dim" remove >/dev/null
+"$repo/tests/with-config.sh" "$DIM_TEST_ROOT/installed-bin/dim" remove >/dev/null
 [[ ! -e "$DIM_TEST_ROOT/installed-bin/dim" ]]
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim" ]]
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.display" ]]
@@ -142,7 +143,7 @@ mv "$DIM_TEST_ROOT/display-dir" "$XDG_CONFIG_HOME/omarchy/plugins/oma.display"
 [[ -n $(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit) ]]
 [[ -f "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json" ]]
 # Re-running against absent plugin folders is safe and leaves the repo source intact.
-"$repo/bin/dim" remove >/dev/null
+"$repo/tests/with-config.sh" "$repo/bin/dim" remove >/dev/null
 [[ -f "$repo/bin/dim" ]]
 [[ -f "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json" ]]
 echo 'Dim CLI checks passed.'

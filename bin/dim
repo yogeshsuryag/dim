@@ -113,7 +113,7 @@ remove() {
   local current config backup root id dir bin_path source_path installed_cli remove_cli=false
   command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'
   command -v jq >/dev/null || fail 'jq is required'
-  root="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/oma.dim"
+  root="${HOME}/.config/omarchy/plugins/oma.dim"
   source_path=$(readlink -f -- "$root/bin/dim" 2>/dev/null || true)
   bin_path=$(readlink -f -- "${BASH_SOURCE[0]}")
   installed_cli=${DIM_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}/dim
@@ -125,7 +125,7 @@ remove() {
 
   # Refuse unexpected paths before disabling anything or deleting files.
   for id in "${plugins[@]}"; do
-    dir="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/$id"
+    dir="${HOME}/.config/omarchy/plugins/$id"
     [[ ! -L $dir ]] || fail "refusing symlink plugin directory: $dir"
     if [[ -e $dir ]]; then
       [[ -d $dir && -f $dir/manifest.json ]] || fail "unexpected plugin directory: $dir"
@@ -133,7 +133,7 @@ remove() {
     fi
   done
 
-  config=${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/shell.json
+  config=${HOME}/.config/omarchy/shell.json
   if [[ -f $config ]]; then
     backup="$config.backup.$(date +%Y%m%d%H%M%S).$$"
     [[ ! -e $backup ]] || fail "config backup already exists: $backup"
@@ -148,7 +148,7 @@ remove() {
     omarchy plugin remove oma.dim || fail "could not remove oma.dim; companion files were retained"
   fi
   for id in oma.display oma.indicators; do
-    dir="${XDG_CONFIG_HOME:-${HOME}/.config}/omarchy/plugins/$id"
+    dir="${HOME}/.config/omarchy/plugins/$id"
     [[ ! -e $dir ]] || rm -rf -- "$dir"
   done
 
