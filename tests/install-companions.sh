@@ -43,14 +43,15 @@ with open(sys.argv[1]) as file:
     config = json.load(file)
 ids = {item.get('id') for item in config.get('plugins', [])}
 ids |= {item.get('id') for entries in config.get('bar', {}).get('layout', {}).values() for item in entries}
-print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids} for plugin_id in ('oma.dim', 'oma.display', 'oma.indicators') if plugin_id != os.environ.get('HIDE_PLUGIN_ID')]))
+print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids} for plugin_id in ('oma.dim', 'oma.display', 'oma.indicators', 'omarchy.indicators') if plugin_id != os.environ.get('HIDE_PLUGIN_ID')]))
 PY
 elif [[ ${1:-} == plugin && ${2:-} == enable ]]; then
   id=${3:?plugin id required}
   printf 'enable %s\n' "$id" >> "$MOCK_LOG"
-  python3 - "$XDG_CONFIG_HOME/omarchy/shell.json" "$XDG_CONFIG_HOME/omarchy/plugins/$id/manifest.json" "$id" <<'PY'
+  python3 - "$XDG_CONFIG_HOME/omarchy/shell.json" "$XDG_CONFIG_HOME/omarchy/plugins/$id/manifest.json" "$id" "${@:4}" <<'PY'
 import json, sys
-config_path, manifest_path, plugin_id = sys.argv[1:]
+config_path, manifest_path, plugin_id = sys.argv[1:4]
+placement = sys.argv[4:]
 with open(config_path) as file:
     config = json.load(file)
 with open(manifest_path) as file:
@@ -72,7 +73,13 @@ else:
         section = manifest.get('barWidget', {}).get('defaultSection', 'center')
         if section not in ('left', 'center', 'right'):
             section = 'center'
-        layout.setdefault(section, []).append({'id': plugin_id})
+        before = placement[placement.index('--before')+1] if '--before' in placement else None
+        for entries in layout.values():
+            for index, entry in enumerate(entries):
+                if entry.get('id') == before:
+                    entries.insert(index, {'id': plugin_id}); found = True; break
+            if found: break
+        if not found: layout.setdefault(section, []).append({'id': plugin_id})
 with open(config_path, 'w') as file:
     json.dump(config, file, indent=2)
     file.write('\n')
@@ -124,10 +131,10 @@ jq -e '.customSetting == "preserve me"
   and .bar.layout.left[0].id == "omarchy.menu"
   and .bar.layout.right[0].id == "oma.display"
   and .bar.layout.right[0].brightness == 73
-  and .bar.layout.right[1].id == "omarchy.indicators"
-  and .bar.layout.right[2].id == "oma.indicators"
-  and .bar.layout.right[1].items == ["Dnd"]
-  and .bar.layout.right[1].alwaysShow == true' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
+  and .bar.layout.right[1].id == "oma.indicators"
+  and .bar.layout.right[2].id == "omarchy.indicators"
+  and .bar.layout.right[2].items == ["Dnd"]
+  and .bar.layout.right[2].alwaysShow == true' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
 
 # Clone-aware enabling is idempotent and does not create a second config backup.
 cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/repeat.json"
@@ -166,7 +173,7 @@ cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/fresh-original.json"
 jq -e 'any(.plugins[]; .id == "oma.dim")
   and .bar.layout.left[0].id == "omarchy.menu"
   and any(.bar.layout.right[]; .id == "oma.display")
-  and any(.bar.layout.right[]; .id == "oma.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
+  and any(.bar.layout.center[]; .id == "oma.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
 cmp "$test_root/fresh-original.json" "$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit)"
 
 # The public installer places the CLI first, then installs and enables plugins.

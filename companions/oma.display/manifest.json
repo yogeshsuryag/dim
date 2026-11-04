@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "oma.display",
   "name": "Display",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Dim",
   "description": "Brightness and monitor controls with optional screen dim settings",
   "kinds": [

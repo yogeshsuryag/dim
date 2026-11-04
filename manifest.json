@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "oma.dim",
   "name": "Dim",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Dim",
   "description": "Toggle a full-screen black overlay and configure its strength",
   "kinds": [

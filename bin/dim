@@ -81,7 +81,11 @@ enable() {
   done
   for id in "${plugins[@]}"; do
     if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$current" >/dev/null; then
-      omarchy plugin enable "$id" || fail "could not enable '$id'"
+      if [[ $id == oma.indicators ]] && jq -e 'any(.[]; .id == "omarchy.indicators" and .enabled == true)' <<<"$current" >/dev/null; then
+        omarchy plugin enable "$id" --before omarchy.indicators || fail "could not enable '$id'"
+      else
+        omarchy plugin enable "$id" || fail "could not enable '$id'"
+      fi
     fi
   done
   current=$(omarchy plugin list --json) || fail 'could not verify Omarchy plugins'

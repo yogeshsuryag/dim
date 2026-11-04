@@ -60,7 +60,10 @@ for id in oma.dim oma.display oma.indicators; do
 done
 test -x "$DIM_BIN_DIR/dim"
 omarchy plugin list --json | jq -e '[.[] | select(.id | startswith("oma."))] | length == 3 and all(.enabled)' >/dev/null
-jq -e '.keep == "unchanged" and .bar.layout.right[0].id == "oma.display" and .bar.layout.right[0].testSetting == 42 and .bar.layout.right[1].id == "omarchy.indicators" and .bar.layout.right[2].id == "oma.indicators"' "$HOME/.config/omarchy/shell.json" >/dev/null
+jq -e '.keep == "unchanged" and .bar.layout.right[0].id == "oma.display" and .bar.layout.right[0].testSetting == 42 and .bar.layout.right[1].id == "oma.indicators" and .bar.layout.right[2].id == "omarchy.indicators"' "$HOME/.config/omarchy/shell.json" >/dev/null
+omarchy plugin disable oma.indicators
+"$DIM_BIN_DIR/dim" enable
+jq -e '[.bar.layout[][] | .id] | index("oma.indicators") + 1 == index("omarchy.indicators")' "$HOME/.config/omarchy/shell.json" >/dev/null
 cp "$HOME/.config/omarchy/shell.json" "$test_dir/before-repeat.json"
 "$HOME/.config/omarchy/plugins/oma.dim/install"
 cmp "$test_dir/before-repeat.json" "$HOME/.config/omarchy/shell.json"

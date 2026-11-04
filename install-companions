@@ -8,6 +8,7 @@ SHELL_CONFIG="$HOME/.config/omarchy/shell.json"
 PLUGIN_BACKUP_ROOT="$HOME/.config/omarchy/plugin-backups"
 REPLACE=false
 STAGED=()
+FILES_CHANGED=false
 
 usage() {
   echo "Usage: ./install-companions [--replace]"
@@ -85,9 +86,10 @@ for id in "${ids[@]}"; do
     mv -- "$stage" "$target"
     echo "Installed $id"
   fi
+  FILES_CHANGED=true
 done
 
-omarchy-shell shell rescanPlugins >/dev/null
+$FILES_CHANGED && omarchy-shell shell rescanPlugins >/dev/null
 # rescanPlugins returns before the registry's subprocess has read the new files.
 # Retry the rescan too: an earlier in-flight scan can ignore the first request.
 discovered=false
@@ -128,8 +130,13 @@ fi
 for id in "${LEGACY_ENABLED[@]}"; do
   omarchy plugin disable "$id"
 done
+installed_plugins=$(omarchy plugin list --json)
 for id in "${NEEDS_ENABLE[@]}"; do
-  omarchy plugin enable "$id"
+  if [[ $id == oma.indicators ]] && jq -e 'any(.[]; .id == "omarchy.indicators" and .enabled == true)' <<<"$installed_plugins" >/dev/null; then
+    omarchy plugin enable "$id" --before omarchy.indicators
+  else
+    omarchy plugin enable "$id"
+  fi
 done
 
 installed_plugins=$(omarchy plugin list --json)

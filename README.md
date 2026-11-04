@@ -15,7 +15,7 @@ omarchy plugin add https://github.com/yogeshsuryag/dim.git
 "$HOME/.config/omarchy/plugins/oma.dim/install"
 ```
 
-Wait for `Installed and enabled: oma.dim, oma.display, oma.indicators.` before using Dim. The installer backs up your shell configuration, replaces the stock display control in its existing position, and adds a separate Dim indicator without removing the other indicators. Earlier Dim IDs are disabled automatically; their files and saved strength are retained.
+Wait for `Installed and enabled: oma.dim, oma.display, oma.indicators.` before using Dim. The installer backs up your shell configuration, replaces the stock display control in its existing position, and adds `oma.indicators` immediately to the left of `omarchy.indicators` without removing the other indicators. Like the stock widget, it shows active indicators and reveals inactive ones on hover. Earlier Dim IDs are disabled automatically; their files and saved strength are retained.
 
 Requires Omarchy Quattro with a running shell. The installer uses its existing `omarchy`, `omarchy-shell`, Bash, Git, `jq`, coreutils, and diffutils commands. No sudo is required. Installation changes only your user plugin directories, bar configuration, and `~/.local/bin/dim`.
 
