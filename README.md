@@ -1,27 +1,35 @@
 # Dim for Omarchy
 
-Dim every display with a black overlay. Toggle it from the bar and adjust its strength from the display panel. This bundle includes the `oma.dim` service, the `oma.display` monitor widget, and the `oma.indicators` status widget.
+The current Jarvis screen-dimming setup, copied with the Oma names:
 
-[![Play the 15-second demo](docs/assets/dim-demo-poster.png)](https://yogeshsuryag.github.io/dim/)
+- `jarvis.screendim` → `oma.screendim`: adjustable black overlay on every display.
+- `jarvis.indicators` → `oma.indicators`: the complete indicator widget, including Screen Dim, Night Light, Do Not Disturb, Stay Awake, Reminder, Screen Recording, Remote Session, and Passwordless Sudo.
+- `jarvis.display` → `oma.monitor`: brightness, text size, scale, monitor, and screen-dimming controls.
 
-Click the preview to open the video player.
+The QML and JavaScript implementations retain the Jarvis behavior. Changes are limited to names, module/IPC identities, and publishing metadata. Both widgets retain their stock replacement metadata: Monitor replaces `omarchy.monitor` and Indicators replaces `omarchy.indicators`, preserving their configured positions and settings.
+
+[![Play the demo](docs/assets/dim-demo-poster.png)](https://yogeshsuryag.github.io/dim/)
+
+The demo shows the earlier Dim version; the current bundle includes the complete Indicators widget.
 
 ## Install
 
-Run **both commands**. Omarchy's first command adds only `oma.dim`; the second installs the CLI and both companion widgets, then enables the complete set:
+Requires Omarchy Quattro and its running standard shell, Bash, Git, `jq`, coreutils, and diffutils. No sudo or additional packages are required on a standard Omarchy installation.
+
+Run both commands:
 
 ```sh
 omarchy plugin add https://github.com/yogeshsuryag/dim.git
-"$HOME/.config/omarchy/plugins/oma.dim/install"
+"$HOME/.config/omarchy/plugins/oma.screendim/install"
 ```
 
-Wait for `Installed and enabled: oma.dim, oma.display, oma.indicators.` before using Dim. The installer backs up your shell configuration, replaces the stock display control in its existing position, and adds `oma.indicators` immediately to the left of `omarchy.indicators` without removing the other indicators. Like the stock widget, it shows active indicators and reveals inactive ones on hover. Earlier Dim IDs are disabled automatically; their files and saved strength are retained.
+The native add command installs the root service. The manual installer installs both companion plugins and `~/.local/bin/dim`, backs up `shell.json`, and enables the three plugins through Omarchy's native commands. Running it explicitly authorizes replacing the stock Monitor and Indicators widgets. Other widgets and settings are retained. Known earlier Dim/Jarvis IDs are disabled; their files and saved strength are retained.
 
-Requires Omarchy Quattro with a running shell. The installer uses its existing `omarchy`, `omarchy-shell`, Bash, Git, `jq`, coreutils, and diffutils commands. No sudo is required. Installation changes only your user plugin directories, bar configuration, and `~/.local/bin/dim`.
+If an existing companion or `dim` command differs, the installer stops. Use `install --replace` to back it up and replace it. Repeat installation of identical files leaves the configuration unchanged.
 
 ## Use
 
-Use `dim` to toggle dimming, check status, change strength, or enable and disable Dim:
+Click Screen Dim in Indicators to toggle the overlay. Adjust its strength in Monitor, or use:
 
 ```sh
 dim toggle
@@ -31,12 +39,12 @@ dim enable
 dim disable
 ```
 
-Run `dim` or `dim help` to see the command list. `dim status` shows whether Dim is enabled or dimming and reports its strength. `dim strength` shows the current strength; `dim strength 60` sets it from `0` to `100` while preserving the current on/off state, with `0` hiding the overlay. If `dim toggle` or `dim strength` reports `Dim is disabled. Run: dim enable`, run `dim enable` to enable all three plugins. `dim disable` turns the overlay off and disables the plugins while keeping their files and saved strength. The `dim` command is installed in `~/.local/bin`.
+Strength ranges from 0 to 100; 0 hides the overlay. Dimming starts off after a shell restart; strength is retained in `${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/screendim/`. `dim disable` turns dimming off and disables all three plugins while retaining their files and saved strength. Native IPC uses `omarchy-shell oma.screendim toggle` (also `status`, `enable`, `disable`, and `setStrength 60`).
 
 ## Remove
 
-Run `dim remove` to disable and remove Dim, its companion widgets, and the `dim` command. Your saved strength setting is retained.
+Run `dim remove` to disable and remove all three plugins and the installed command. Native disabling restores the stock widgets. Saved strength and backups are retained. After a partial installation, the command can be run from the checkout as `bin/dim remove`.
 
-## License and attribution
+## License
 
-The root `oma.dim` plugin is MIT licensed; see [LICENSE](LICENSE). Adapted Omarchy portions in the two companion plugins retain Omarchy's MIT copyright and license notice in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). See [TECHNICAL.md](TECHNICAL.md) for details.
+MIT; see [LICENSE](LICENSE) and the upstream Omarchy attribution in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). See [TECHNICAL.md](TECHNICAL.md) for packaging and validation details.

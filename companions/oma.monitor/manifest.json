@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "oma.display",
-  "name": "Display",
-  "version": "1.0.2",
-  "author": "Dim",
+  "id": "oma.monitor",
+  "name": "Oma Monitor",
+  "version": "1.1.0",
+  "author": "Yogesh (adapted from Omarchy)",
   "description": "Brightness and monitor controls with optional screen dim settings",
   "kinds": [
     "bar-widget"
@@ -15,7 +15,7 @@
     "clonedFrom": "omarchy.monitor"
   },
   "barWidget": {
-    "displayName": "Display",
+    "displayName": "Monitor",
     "description": "Brightness, screen dimming, and laptop display controls",
     "category": "System",
     "allowMultiple": false,

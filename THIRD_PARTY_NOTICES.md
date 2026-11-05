@@ -2,9 +2,9 @@
 
 ## Omarchy companion code
 
-Portions of `companions/oma.display/` and `companions/oma.indicators/` are adapted from Omarchy's monitor and indicators source. The display retains replacement metadata for `omarchy.monitor`; the Dim indicator is registered independently and leaves `omarchy.indicators` intact. Omarchy is licensed under the MIT License; the copyright and license notice below apply to those adapted portions.
+Portions of `companions/oma.monitor/` and `companions/oma.indicators/` are adapted from Omarchy's monitor and indicators source. Both widgets retain replacement metadata for their stock sources, `omarchy.monitor` and `omarchy.indicators`. The copies come from the installed Jarvis display and indicators plugins, including their local helper components. Omarchy is licensed under the MIT License; the copyright and license notice below apply to those adapted portions.
 
-The root `oma.dim` plugin is separately licensed under the MIT License in [LICENSE](LICENSE). That root license does not replace this notice or alter the attribution for Omarchy-derived companion portions.
+The root `oma.screendim` plugin is separately licensed under the MIT License in [LICENSE](LICENSE). That root license does not replace this notice or alter the attribution for Omarchy-derived companion portions.
 
 Upstream license: [omacom/omarchy `LICENSE` on branch `quattro`](https://github.com/omacom/omarchy/blob/quattro/LICENSE).
 

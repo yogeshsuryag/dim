@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "oma.indicators",
-  "name": "Screen Dim Indicator",
-  "version": "1.0.2",
-  "author": "Dim (adapted from Omarchy)",
-  "description": "A standalone bar control for the Dim overlay",
+  "name": "Indicators",
+  "version": "1.1.0",
+  "author": "Yogesh (adapted from Omarchy)",
+  "description": "Manual state indicators",
   "kinds": [
     "bar-widget"
   ],
@@ -12,7 +12,7 @@
     "barWidget": "Indicators.qml"
   },
   "barWidget": {
-    "displayName": "Screen Dim",
+    "displayName": "Indicators",
     "description": "Manual state indicators",
     "category": "Status",
     "allowMultiple": true,
@@ -27,9 +27,44 @@
         "emptyText": "No indicators",
         "options": [
           {
+            "value": "PasswordlessSudo",
+            "label": "Passwordless sudo",
+            "description": "Warning while passwordless root access is enabled"
+          },
+          {
+            "value": "ScreenRecording",
+            "label": "Screen recording",
+            "description": "GPU screen recorder status"
+          },
+          {
+            "value": "RemoteSession",
+            "label": "Remote session",
+            "description": "Warning while someone is connected through gliff"
+          },
+          {
+            "value": "Reminder",
+            "label": "Reminder",
+            "description": "Queued reminder status"
+          },
+          {
             "value": "ScreenDim",
             "label": "Screen dim",
             "description": "Toggle the screen dim overlay"
+          },
+          {
+            "value": "NightLight",
+            "label": "Night light",
+            "description": "Blue-light filter"
+          },
+          {
+            "value": "Dnd",
+            "label": "Do not disturb",
+            "description": "Notification silencing"
+          },
+          {
+            "value": "StayAwake",
+            "label": "Stay awake",
+            "description": "Idle lock and screensaver override"
           }
         ]
       },
@@ -42,6 +77,9 @@
       }
     ],
     "defaultSection": "center"
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.indicators"
   },
   "license": "MIT"
 }

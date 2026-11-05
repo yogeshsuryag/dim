@@ -42,6 +42,7 @@ ShellRoot {
       for (var id in registry.installedPlugins) {
         var manifest = registry.installedPlugins[id]
         result.push({id: id, kinds: manifest.kinds,
+          clonedFrom: manifest.omarchy ? (manifest.omarchy.clonedFrom || "") : "",
           enabled: manifest.kinds.indexOf("bar-widget") >= 0 ? registry.inBar(id) : registry.isEnabled(id)})
       }
       return JSON.stringify(result)
