@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-plugins=(oma.screendim oma.monitor oma.indicators)
+plugins=(oma.dim oma.monitor oma.indicators)
 
 usage() {
   cat <<'EOF'
@@ -53,9 +53,9 @@ status() {
   for id in "${plugins[@]}"; do
     if ! jq -e --arg id "$id" 'index($id) != null' <<<"$enabled" >/dev/null; then active=false; fi
   done
-  if jq -e 'any(.[]; .id == "oma.screendim" and .enabled == true)' <<<"$plugin_data" >/dev/null; then
+  if jq -e 'any(.[]; .id == "oma.dim" and .enabled == true)' <<<"$plugin_data" >/dev/null; then
     require_shell
-    payload=$(omarchy-shell oma.screendim status) || fail 'could not read Dim status; is omarchy-shell running?'
+    payload=$(omarchy-shell oma.dim status) || fail 'could not read Dim status; is omarchy-shell running?'
     strength=$(jq -er '.strength | numbers' <<<"$payload") || fail 'invalid status from Dim service'
     if [[ $active != true ]]; then state='disabled (plugin integration incomplete)'
     elif jq -e '.enabled == true' <<<"$payload" >/dev/null; then
@@ -92,8 +92,8 @@ enable() {
 disable() {
   local current id errors=0
   current=$(omarchy plugin list --json) || fail 'could not read Omarchy plugins'
-  if jq -e 'any(.[]; .id == "oma.screendim" and .enabled == true)' <<<"$current" >/dev/null; then
-    if command -v omarchy-shell >/dev/null && omarchy-shell oma.screendim disable >/dev/null; then
+  if jq -e 'any(.[]; .id == "oma.dim" and .enabled == true)' <<<"$current" >/dev/null; then
+    if command -v omarchy-shell >/dev/null && omarchy-shell oma.dim disable >/dev/null; then
       :
     else
       echo 'dim: could not turn dimming off through the running shell; disabling plugins anyway' >&2
@@ -113,7 +113,7 @@ remove() {
   local current config backup root id dir bin_path source_path installed_cli remove_cli=false
   command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'
   command -v jq >/dev/null || fail 'jq is required'
-  root="${HOME}/.config/omarchy/plugins/oma.screendim"
+  root="${HOME}/.config/omarchy/plugins/oma.dim"
   source_path=$(readlink -f -- "$root/bin/dim" 2>/dev/null || true)
   bin_path=$(readlink -f -- "${BASH_SOURCE[0]}")
   installed_cli=${DIM_BIN_DIR:-${XDG_BIN_HOME:-${HOME}/.local/bin}}/dim
@@ -144,8 +144,8 @@ remove() {
   disable
   # The root checkout is git-managed by `plugin add`; use Omarchy's removal
   # command for it. The two bundled companions are plain copied directories.
-  if jq -e 'any(.[]; .id == "oma.screendim")' <<<"$current" >/dev/null; then
-    omarchy plugin remove oma.screendim || fail "could not remove oma.screendim; companion files were retained"
+  if jq -e 'any(.[]; .id == "oma.dim")' <<<"$current" >/dev/null; then
+    omarchy plugin remove oma.dim || fail "could not remove oma.dim; companion files were retained"
   fi
   for id in oma.monitor oma.indicators; do
     dir="${HOME}/.config/omarchy/plugins/$id"
@@ -161,17 +161,17 @@ remove() {
 case "${1:-help}" in
   help|-h|--help) [[ $# -le 1 ]] || fail 'help takes no arguments'; usage ;;
   status) [[ $# -eq 1 ]] || fail 'usage: dim status'; status ;;
-  toggle) [[ $# -eq 1 ]] || fail 'usage: dim toggle'; disabled_guard; require_shell; omarchy-shell oma.screendim toggle ;;
+  toggle) [[ $# -eq 1 ]] || fail 'usage: dim toggle'; disabled_guard; require_shell; omarchy-shell oma.dim toggle ;;
   strength)
     [[ $# -le 2 ]] || fail 'usage: dim strength [0-100]'
     disabled_guard; require_shell
     if [[ $# -eq 1 ]]; then
-      payload=$(omarchy-shell oma.screendim status) || fail 'could not read Dim status; is omarchy-shell running?'
+      payload=$(omarchy-shell oma.dim status) || fail 'could not read Dim status; is omarchy-shell running?'
       strength_value=$(jq -er '.strength | numbers' <<<"$payload") || fail 'invalid status from Dim service'
       printf 'Strength: %s%%\n' "$strength_value"
     else
       [[ $2 =~ ^[0-9]{1,3}$ ]] && (( 10#$2 <= 100 )) || fail 'strength must be an integer from 0 to 100'
-      omarchy-shell oma.screendim setStrength "$((10#$2))" || fail 'could not set strength; is omarchy-shell running?'
+      omarchy-shell oma.dim setStrength "$((10#$2))" || fail 'could not set strength; is omarchy-shell running?'
     fi ;;
   enable) [[ $# -eq 1 ]] || fail 'usage: dim enable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; enable ;;
   disable) [[ $# -eq 1 ]] || fail 'usage: dim disable'; command -v omarchy >/dev/null || fail 'omarchy is required (install Omarchy shell first)'; command -v jq >/dev/null || fail 'jq is required'; disable ;;

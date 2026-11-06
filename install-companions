@@ -13,7 +13,7 @@ INDICATORS_UPGRADE=false
 
 usage() {
   echo "Usage: ./install-companions [--replace]"
-  echo "Install and enable oma.screendim, oma.monitor, and oma.indicators."
+  echo "Install and enable oma.dim, oma.monitor, and oma.indicators."
 }
 
 case "${1:-}" in
@@ -49,8 +49,7 @@ for id in "${ids[@]}"; do
   [[ "$source_id" == "$id" ]] || { echo "Expected plugin id $id, found $source_id" >&2; exit 1; }
   target="$PLUGIN_ROOT/$id"
   [[ ! -L "$target" ]] || { echo "Refusing symlink target: $target" >&2; exit 1; }
-  # The previous public indicator was independent; re-enable its replacement
-  # once so native clone handling removes the duplicate stock widget.
+  # Re-enable an independent Indicators copy so native clone handling applies.
   if [[ $id == oma.indicators && -f $target/manifest.json ]] \
     && ! jq -e '.omarchy.clonedFrom == "omarchy.indicators"' "$target/manifest.json" >/dev/null; then
     INDICATORS_UPGRADE=true
@@ -103,7 +102,7 @@ discovered=false
 discovery_deadline=$((SECONDS + 5))
 for ((attempt = 0; SECONDS < discovery_deadline; attempt++)); do
   installed_plugins=$(omarchy plugin list --json)
-  if jq -e 'map(.id) as $found | ["oma.screendim", "oma.monitor", "oma.indicators"]
+  if jq -e 'map(.id) as $found | ["oma.dim", "oma.monitor", "oma.indicators"]
     | all(. as $id | $found | index($id) != null)' <<<"$installed_plugins" >/dev/null \
     && jq -e 'any(.[]; .id == "oma.indicators" and .clonedFrom == "omarchy.indicators")
       and any(.[]; .id == "oma.monitor" and .clonedFrom == "omarchy.monitor")' <<<"$installed_plugins" >/dev/null; then
@@ -121,11 +120,9 @@ $discovered || {
 NEEDS_ENABLE=()
 LEGACY_ENABLED=()
 mapfile -t LEGACY_ENABLED < <(jq -r --argjson indicatorsUpgrade "$INDICATORS_UPGRADE" '.[] | select(.enabled == true)
-  | select(.id == "jarvis.dim" or .id == "jarvis.screendim"
-    or .id == "oma.dim" or .id == "oma.display"
-    or .id == "jarvis.display" or .id == "jarvis.indicators"
+  | select(.id == "oma.screendim" or .id == "oma.display"
     or (.id == "oma.indicators" and $indicatorsUpgrade)) | .id' <<<"$installed_plugins")
-for id in oma.screendim oma.indicators oma.monitor; do
+for id in oma.dim oma.indicators oma.monitor; do
   if ! jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null; then
     NEEDS_ENABLE+=("$id")
   elif [[ " ${LEGACY_ENABLED[*]} " == *" $id "* ]]; then
@@ -149,10 +146,10 @@ for id in "${NEEDS_ENABLE[@]}"; do
 done
 
 installed_plugins=$(omarchy plugin list --json)
-for id in oma.screendim oma.indicators oma.monitor; do
+for id in oma.dim oma.indicators oma.monitor; do
   jq -e --arg id "$id" 'any(.[]; .id == $id and .enabled == true)' <<<"$installed_plugins" >/dev/null || {
     echo "Omarchy did not enable '$id'." >&2
     exit 1
   }
 done
-echo "Installed and enabled: oma.screendim, oma.monitor, oma.indicators."
+echo "Installed and enabled: oma.dim, oma.monitor, oma.indicators."

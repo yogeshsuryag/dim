@@ -37,11 +37,11 @@ for plugin in plugins:
 json.dump(plugins, open(p, 'w'))
 PY
     ;;
-  'plugin remove oma.screendim') printf 'remove oma.screendim\n' >> "$MOCK_LOG"; rm -rf -- "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim"; python3 - "$DIM_TEST_ROOT/plugins.json" <<'PY'
+  'plugin remove oma.dim') printf 'remove oma.dim\n' >> "$MOCK_LOG"; rm -rf -- "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"; python3 - "$DIM_TEST_ROOT/plugins.json" <<'PY'
 import json, sys
 path = sys.argv[1]
 with open(path) as file: plugins = json.load(file)
-with open(path, 'w') as file: json.dump([item for item in plugins if item['id'] != 'oma.screendim'], file)
+with open(path, 'w') as file: json.dump([item for item in plugins if item['id'] != 'oma.dim'], file)
 PY
     ;;
   *) echo "unexpected omarchy: $*" >&2; exit 64 ;;
@@ -52,10 +52,10 @@ cat > "$tmp/bin/omarchy-shell" <<'MOCK'
 set -euo pipefail
 printf '%s\n' "$*" >> "$MOCK_LOG"
 case "$*" in
-  'oma.screendim status') cat "$DIM_TEST_ROOT/state.json" ;;
-  'oma.screendim toggle') echo disabled ;;
-  'oma.screendim disable') [[ ${FAIL_DIM_IPC:-} != true ]] || exit 1; echo disabled ;;
-  'oma.screendim setStrength '*) echo "${3:?}" ;;
+  'oma.dim status') cat "$DIM_TEST_ROOT/state.json" ;;
+  'oma.dim toggle') echo disabled ;;
+  'oma.dim disable') [[ ${FAIL_DIM_IPC:-} != true ]] || exit 1; echo disabled ;;
+  'oma.dim setStrength '*) echo "${3:?}" ;;
   'shell rescanPlugins') ;;
   *) echo "unexpected shell IPC: $*" >&2; exit 64 ;;
 esac
@@ -63,7 +63,7 @@ MOCK
 chmod +x "$tmp/bin/omarchy" "$tmp/bin/omarchy-shell"
 
 cat > "$tmp/plugins.json" <<'JSON'
-[{"id":"oma.screendim","enabled":false},{"id":"oma.monitor","enabled":true},{"id":"oma.indicators","enabled":true}]
+[{"id":"oma.dim","enabled":false},{"id":"oma.monitor","enabled":true},{"id":"oma.indicators","enabled":true}]
 JSON
 printf '{"enabled":false,"strength":42}\n' > "$tmp/state.json"
 
@@ -72,8 +72,8 @@ grep -q 'Dim is disabled. Run: dim enable' "$tmp/out"
 if "$repo/tests/with-config.sh" "$repo/bin/dim" strength >"$tmp/out" 2>&1; then echo 'disabled strength unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'Dim is disabled. Run: dim enable' "$tmp/out"
 
-if FAIL_ENABLE_ID=oma.screendim "$repo/tests/with-config.sh" "$repo/bin/dim" enable >"$tmp/out" 2>&1; then echo 'native enable failure unexpectedly succeeded' >&2; exit 1; fi
-grep -q "could not enable 'oma.screendim'" "$tmp/out"
+if FAIL_ENABLE_ID=oma.dim "$repo/tests/with-config.sh" "$repo/bin/dim" enable >"$tmp/out" 2>&1; then echo 'native enable failure unexpectedly succeeded' >&2; exit 1; fi
+grep -q "could not enable 'oma.dim'" "$tmp/out"
 : > "$MOCK_LOG"
 
 "$repo/tests/with-config.sh" "$repo/bin/dim" enable >/dev/null
@@ -83,7 +83,7 @@ cp "$MOCK_LOG" "$tmp/enabled-log"
 cmp "$tmp/enabled-log" "$MOCK_LOG"
 "$repo/tests/with-config.sh" "$repo/bin/dim" strength | grep -q 'Strength: 42%'
 "$repo/tests/with-config.sh" "$repo/bin/dim" strength 0 >/dev/null
-grep -q '^oma.screendim setStrength 0$' "$MOCK_LOG"
+grep -q '^oma.dim setStrength 0$' "$MOCK_LOG"
 if "$repo/tests/with-config.sh" "$repo/bin/dim" strength 101 >"$tmp/out" 2>&1; then echo 'invalid strength unexpectedly succeeded' >&2; exit 1; fi
 grep -q 'strength must be an integer from 0 to 100' "$tmp/out"
 "$repo/tests/with-config.sh" "$repo/bin/dim" status | grep -q 'Dim: enabled, dimming off'
@@ -100,8 +100,8 @@ cmp "$tmp/disabled-log" "$MOCK_LOG"
 
 # Removal uses isolated config, plugin, state, and command locations.
 export XDG_CONFIG_HOME="$DIM_TEST_ROOT/config"
-mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor" "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" "$DIM_TEST_ROOT/installed-bin"
-for id in oma.screendim oma.monitor oma.indicators; do
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor" "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" "$DIM_TEST_ROOT/installed-bin"
+for id in oma.dim oma.monitor oma.indicators; do
   printf '{"id":"%s"}\n' "$id" > "$XDG_CONFIG_HOME/omarchy/plugins/$id/manifest.json"
 done
 
@@ -110,9 +110,9 @@ done
 cp "$repo/bin/dim" "$DIM_TEST_ROOT/installed-bin/dim"
 export DIM_BIN_DIR="$DIM_TEST_ROOT/installed-bin"
 printf '{"plugins":[]}' > "$XDG_CONFIG_HOME/omarchy/shell.json"
-cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/bin-dim-source"
-mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/bin"
-cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/bin/dim"
+cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin-dim-source"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin"
+cp "$repo/bin/dim" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/bin/dim"
 mkdir -p "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim"
 printf '{"strength":42}\n' > "${XDG_STATE_HOME:-$DIM_TEST_ROOT/state-home}/omarchy/screendim/strength.json"
 python3 - "$DIM_TEST_ROOT/plugins.json" <<'PY'
@@ -137,7 +137,7 @@ unlink "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor"
 mv "$DIM_TEST_ROOT/display-dir" "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor"
 "$repo/tests/with-config.sh" "$DIM_TEST_ROOT/installed-bin/dim" remove >/dev/null
 [[ ! -e "$DIM_TEST_ROOT/installed-bin/dim" ]]
-[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim" ]]
+[[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim" ]]
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor" ]]
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators" ]]
 [[ -n $(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit) ]]

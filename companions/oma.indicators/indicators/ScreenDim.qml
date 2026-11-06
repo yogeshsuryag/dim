@@ -22,9 +22,9 @@ OmaIndicator {
 
   function toggle() {
     if (root.bar && typeof root.bar.run === "function")
-      root.bar.run("omarchy-shell oma.screendim toggle")
+      root.bar.run("omarchy-shell oma.dim toggle")
     else
-      console.warn("oma.screendim: bar command runner unavailable")
+      console.warn("oma.dim: bar command runner unavailable")
   }
 
   function updateDimState(raw) {

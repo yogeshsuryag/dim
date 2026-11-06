@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "oma.screendim",
-  "name": "Oma Screen Dim",
+  "id": "oma.dim",
+  "name": "Dim",
   "version": "1.1.0",
   "author": "Yogesh",
   "description": "Toggle a full-screen black overlay and configure its strength",
