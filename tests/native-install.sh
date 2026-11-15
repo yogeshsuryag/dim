@@ -54,8 +54,8 @@ fi
 grep -q 'First install the root plugin' "$test_dir/missing-root.log"
 test ! -e "$DIM_BIN_DIR/dim"
 omarchy plugin add "$test_dir/source" --yes
-"$HOME/.config/omarchy/plugins/oma.dim/install"
-for id in oma.dim oma.monitor oma.indicators; do
+"$HOME/.config/omarchy/plugins/oma.screendim/install"
+for id in oma.screendim oma.monitor oma.indicators; do
   test -f "$HOME/.config/omarchy/plugins/$id/manifest.json"
   omarchy plugin validate "$HOME/.config/omarchy/plugins/$id"
 done
@@ -66,12 +66,13 @@ omarchy plugin disable oma.indicators
 "$DIM_BIN_DIR/dim" enable
 jq -e '[.bar.layout[][] | .id] | index("oma.indicators") != null and index("omarchy.indicators") == null' "$HOME/.config/omarchy/shell.json" >/dev/null
 cp "$HOME/.config/omarchy/shell.json" "$test_dir/before-repeat.json"
-"$HOME/.config/omarchy/plugins/oma.dim/install"
+"$HOME/.config/omarchy/plugins/oma.screendim/install"
 cmp "$test_dir/before-repeat.json" "$HOME/.config/omarchy/shell.json"
 
-# Existing Oma versions must not leave duplicate services or controls enabled.
-for id in oma.dim oma.monitor oma.indicators; do omarchy plugin disable "$id"; done
-for pair in 'oma.dim oma.screendim' 'oma.monitor oma.display'; do
+# Previous plugin ids must not leave duplicate services or controls enabled.
+# oma.screendim is the permanent root id and must stay enabled.
+for id in oma.screendim oma.monitor oma.indicators; do omarchy plugin disable "$id"; done
+for pair in 'oma.screendim oma.dim' 'oma.monitor oma.display'; do
   read -r current old_id <<<"$pair"
   cp -a "$HOME/.config/omarchy/plugins/$current" "$HOME/.config/omarchy/plugins/$old_id"
   jq --arg id "$old_id" '.id = $id' "$HOME/.config/omarchy/plugins/$old_id/manifest.json" > "$test_dir/old.json"
@@ -81,13 +82,13 @@ jq 'del(.omarchy)' "$HOME/.config/omarchy/plugins/oma.indicators/manifest.json" 
 cp "$test_dir/old.json" "$HOME/.config/omarchy/plugins/oma.indicators/manifest.json"
 omarchy-shell shell rescanPlugins
 for ((i=0; i<100; i++)); do
-  omarchy plugin list --json | jq -e 'any(.[]; .id == "oma.display")' >/dev/null && break
+  omarchy plugin list --json | jq -e 'any(.[]; .id == "oma.dim") and any(.[]; .id == "oma.display")' >/dev/null && break
   sleep 0.05
 done
-for id in oma.screendim oma.display; do omarchy plugin enable "$id"; done
+for id in oma.dim oma.display; do omarchy plugin enable "$id"; done
 omarchy plugin enable oma.indicators --before omarchy.indicators
-"$HOME/.config/omarchy/plugins/oma.dim/install" --replace
-omarchy plugin list --json | jq -e 'all(.[]; if (.id == "oma.screendim" or .id == "oma.display") then (.enabled | not) else true end)' >/dev/null
+"$HOME/.config/omarchy/plugins/oma.screendim/install" --replace
+omarchy plugin list --json | jq -e 'all(.[]; if (.id == "oma.dim" or .id == "oma.display") then (.enabled | not) else true end) and any(.[]; .id == "oma.screendim" and .enabled == true)' >/dev/null
 jq -e '[.bar.layout[][] | .id] | map(select(. == "oma.indicators")) | length == 1' "$HOME/.config/omarchy/shell.json" >/dev/null
 jq -e '[.bar.layout[][] | .id] | index("omarchy.indicators") == null and index("oma.monitor") != null' "$HOME/.config/omarchy/shell.json" >/dev/null
 echo 'Native install passed: all three plugins installed/enabled; existing settings preserved; repeat install is unchanged.'

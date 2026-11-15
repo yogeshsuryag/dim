@@ -5,10 +5,10 @@ repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 test_root=$(mktemp -d "${TMPDIR:-/tmp}/dim-companions-test.XXXXXX")
 export XDG_CONFIG_HOME="$test_root/config"
 export MOCK_LOG="$test_root/omarchy.log"
-mkdir -p "$test_root/bin" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
+mkdir -p "$test_root/bin" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim"
 export PATH="$test_root/bin:$PATH"
 
-cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/"
 cat > "$XDG_CONFIG_HOME/omarchy/shell.json" <<'JSON'
 {
   "version": 1,
@@ -43,7 +43,7 @@ with open(sys.argv[1]) as file:
     config = json.load(file)
 ids = {item.get('id') for item in config.get('plugins', [])}
 ids |= {item.get('id') for entries in config.get('bar', {}).get('layout', {}).values() for item in entries}
-print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids, 'clonedFrom': {'oma.indicators': 'omarchy.indicators', 'oma.monitor': 'omarchy.monitor'}.get(plugin_id, '')} for plugin_id in ('oma.dim', 'oma.monitor', 'oma.indicators', 'omarchy.indicators') if plugin_id != os.environ.get('HIDE_PLUGIN_ID')]))
+print(json.dumps([{'id': plugin_id, 'enabled': plugin_id in ids, 'clonedFrom': {'oma.indicators': 'omarchy.indicators', 'oma.monitor': 'omarchy.monitor'}.get(plugin_id, '')} for plugin_id in ('oma.screendim', 'oma.monitor', 'oma.indicators', 'omarchy.indicators', 'oma.dim', 'oma.display') if plugin_id != os.environ.get('HIDE_PLUGIN_ID')]))
 PY
 elif [[ ${1:-} == plugin && ${2:-} == enable ]]; then
   id=${3:?plugin id required}
@@ -84,6 +84,21 @@ with open(config_path, 'w') as file:
     json.dump(config, file, indent=2)
     file.write('\n')
 PY
+elif [[ ${1:-} == plugin && ${2:-} == disable ]]; then
+  id=${3:?plugin id required}
+  printf 'disable %s\n' "$id" >> "$MOCK_LOG"
+  python3 - "$XDG_CONFIG_HOME/omarchy/shell.json" "$id" <<'PY'
+import json, sys
+config_path, plugin_id = sys.argv[1:3]
+with open(config_path) as file:
+    config = json.load(file)
+config['plugins'] = [item for item in config.get('plugins', []) if item.get('id') != plugin_id]
+for entries in config.get('bar', {}).get('layout', {}).values():
+    entries[:] = [entry for entry in entries if entry.get('id') != plugin_id]
+with open(config_path, 'w') as file:
+    json.dump(config, file, indent=2)
+    file.write('\n')
+PY
 else
   echo "unsupported mock Omarchy command: $*" >&2
   exit 64
@@ -118,7 +133,7 @@ cmp "$test_root/original.json" "$XDG_CONFIG_HOME/omarchy/shell.json"
 [[ -f "$XDG_CONFIG_HOME/omarchy/plugins/oma.indicators/manifest.json" ]]
 
 "$repo/tests/with-config.sh" "$repo/install-companions"
-for id in oma.dim oma.indicators oma.monitor; do
+for id in oma.screendim oma.indicators oma.monitor; do
   grep -q "^enable $id$" "$MOCK_LOG"
 done
 backup=$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*' -print -quit)
@@ -126,7 +141,7 @@ backup=$(find "$XDG_CONFIG_HOME/omarchy" -maxdepth 1 -name 'shell.json.backup.*'
 cmp "$test_root/original.json" "$backup"
 jq -e '.customSetting == "preserve me"
   and any(.plugins[]; .id == "existing.service" and .setting == "keep")
-  and any(.plugins[]; .id == "oma.dim")
+  and any(.plugins[]; .id == "oma.screendim")
   and .bar.position == "top"
   and .bar.layout.left[0].id == "omarchy.menu"
   and .bar.layout.right[0].id == "oma.monitor"
@@ -163,13 +178,13 @@ plugin_backup=$(find "$XDG_CONFIG_HOME/omarchy/plugin-backups" -maxdepth 1 -type
 # With stock clone slots absent, the mocked native API uses the manifest fallback section.
 fresh="$test_root/fresh"
 export XDG_CONFIG_HOME="$fresh"
-mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
-cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/"
 printf '{"version":1,"plugins":[],"bar":{"layout":{"left":[{"id":"omarchy.menu"}]}}}\n' > "$XDG_CONFIG_HOME/omarchy/shell.json"
 cp "$XDG_CONFIG_HOME/omarchy/shell.json" "$test_root/fresh-original.json"
 : > "$MOCK_LOG"
 "$repo/tests/with-config.sh" "$repo/install-companions"
-jq -e 'any(.plugins[]; .id == "oma.dim")
+jq -e 'any(.plugins[]; .id == "oma.screendim")
   and .bar.layout.left[0].id == "omarchy.menu"
   and any(.bar.layout.right[]; .id == "oma.monitor")
   and any(.bar.layout.center[]; .id == "oma.indicators")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
@@ -179,8 +194,8 @@ cmp "$test_root/fresh-original.json" "$(find "$XDG_CONFIG_HOME/omarchy" -maxdept
 installer_config="$test_root/installer-config"
 installer_bin="$test_root/installer-bin"
 export XDG_CONFIG_HOME="$installer_config" DIM_BIN_DIR="$installer_bin"
-mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim"
-cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.dim/"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/"
 printf '{"version":1,"plugins":[],"bar":{"layout":{"left":[],"center":[],"right":[]}}}\n' > "$XDG_CONFIG_HOME/omarchy/shell.json"
 mkdir -p "$installer_bin"
 printf '#!/bin/sh\necho user command\n' > "$installer_bin/dim"
@@ -197,7 +212,7 @@ cmp "$test_root/installer-original.json" "$XDG_CONFIG_HOME/omarchy/shell.json"
 [[ -x "$installer_bin/dim" ]]
 cmp "$repo/bin/dim" "$installer_bin/dim"
 cmp "$test_root/installer-original-command" "$(find "$installer_bin" -maxdepth 1 -name 'dim.backup.*' -print -quit)"
-grep -q '^enable oma.dim$' "$MOCK_LOG"
+grep -q '^enable oma.screendim$' "$MOCK_LOG"
 grep -q '^enable oma.monitor$' "$MOCK_LOG"
 grep -q '^enable oma.indicators$' "$MOCK_LOG"
 echo "Companion install and enable checks passed (temporary files: $test_root)."
@@ -206,3 +221,26 @@ echo "Companion install and enable checks passed (temporary files: $test_root)."
 printf 'local companion edit\n' > "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor/local-only"
 "$repo/tests/with-config.sh" "$repo/install" --replace
 [[ ! -e "$XDG_CONFIG_HOME/omarchy/plugins/oma.monitor/local-only" ]]
+
+# Previous root and monitor ids are disabled. The current root id is never disabled.
+legacy_config="$test_root/legacy-config"
+export XDG_CONFIG_HOME="$legacy_config"
+mkdir -p "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim"
+cp "$repo/manifest.json" "$repo/Service.qml" "$XDG_CONFIG_HOME/omarchy/plugins/oma.screendim/"
+printf '%s\n' '{"version":1,"plugins":[{"id":"oma.screendim"},{"id":"oma.dim"},{"id":"oma.display"}],"bar":{"layout":{"left":[],"center":[],"right":[]}}}' > "$XDG_CONFIG_HOME/omarchy/shell.json"
+: > "$MOCK_LOG"
+"$repo/tests/with-config.sh" "$repo/install-companions"
+grep -q '^disable oma.dim$' "$MOCK_LOG"
+grep -q '^disable oma.display$' "$MOCK_LOG"
+if grep -q '^disable oma.screendim$' "$MOCK_LOG"; then
+  echo 'current root id oma.screendim was disabled' >&2
+  exit 1
+fi
+if grep -q '^enable oma.screendim$' "$MOCK_LOG"; then
+  echo 'already-enabled oma.screendim was treated as a legacy id' >&2
+  exit 1
+fi
+grep -q '^enable oma.monitor$' "$MOCK_LOG"
+grep -q '^enable oma.indicators$' "$MOCK_LOG"
+jq -e 'any(.plugins[]; .id == "oma.screendim")
+  and all(.plugins[]; .id != "oma.dim" and .id != "oma.display")' "$XDG_CONFIG_HOME/omarchy/shell.json" >/dev/null
